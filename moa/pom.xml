@@ -116,6 +116,56 @@
       <artifactId>jfreechart</artifactId>
       <version>1.0.19</version>
     </dependency>
+
+
+    <dependency>
+      <groupId>ai.djl</groupId>
+      <artifactId>api</artifactId>
+      <version>0.8.0</version>
+    </dependency>
+
+    <dependency>
+      <groupId>ai.djl</groupId>
+      <artifactId>basicdataset</artifactId>
+      <version>0.8.0</version>
+    </dependency>
+
+<!--    <dependency>-->
+<!--      <groupId>org.slf4j</groupId>-->
+<!--      <artifactId>slf4j-api</artifactId>-->
+<!--      <version>1.7.26</version>-->
+<!--    </dependency>-->
+
+<!--    <dependency>-->
+<!--      <groupId>org.slf4j</groupId>-->
+<!--      <artifactId>slf4j-simple</artifactId>-->
+<!--      <version>1.7.26</version>-->
+<!--    </dependency>-->
+
+<!--    <dependency>-->
+<!--      <groupId>net.java.dev.jna</groupId>-->
+<!--      <artifactId>jna</artifactId>-->
+<!--      <version>5.3.0</version>-->
+<!--    </dependency>-->
+
+    <dependency>
+      <groupId>ai.djl</groupId>
+      <artifactId>model-zoo</artifactId>
+      <version>0.8.0</version>
+    </dependency>
+
+    <dependency>
+      <groupId>ai.djl.pytorch</groupId>
+      <artifactId>pytorch-engine</artifactId>
+      <version>0.8.0</version>
+    </dependency>
+
+    <dependency>
+      <groupId>ai.djl.pytorch</groupId>
+      <artifactId>pytorch-native-auto</artifactId>
+      <version>1.6.0</version>
+    </dependency>
+
   </dependencies>
 
   <build>
@@ -164,7 +214,7 @@
       </plugin>
 
       <plugin>
-        <groupId>org.codehaus.mojo</groupId>
+        <groupId>com.github.fracpete</groupId>
         <artifactId>latex-maven-plugin</artifactId>
       </plugin>
 

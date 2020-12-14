@@ -44,9 +44,6 @@ import ai.djl.training.loss.Loss;
 import ai.djl.training.tracker.Tracker;
 import ai.djl.training.optimizer.Optimizer;
 
-import java.lang.reflect.Array;
-import java.util.Arrays;
-
 
 public class MLP extends AbstractClassifier implements MultiClassClassifier, Regressor {
 
@@ -102,69 +99,56 @@ public class MLP extends AbstractClassifier implements MultiClassClassifier, Reg
     public void resetLearningImpl() {
     }
 
-    @Override
-    public void trainOnInstanceImpl(Instance inst) {
-		if (nnmodel == null){
-			initializeNetwork(inst);
-		}
-		float[] featureValues = new float [featureValuesArraySize];
-		int totalOneHotEncodedSize = 0;
-		int totalOneHotEncodedInstances = 0;
-		for(int i=0; i < inst.numInputAttributes(); i++){
-			if (useOneHotEncode.isSet() && inst.attribute(i).isNominal()){
-				featureValues[ i + totalOneHotEncodedSize - totalOneHotEncodedInstances + (int)inst.value(i)] = 1.0f;
-				totalOneHotEncodedSize += inst.attribute(i).numValues();
-				totalOneHotEncodedInstances ++;
-			}else
-			{
-				featureValues[ i + totalOneHotEncodedSize - totalOneHotEncodedInstances] = (float) inst.value(i);
-			}
-		}
-		double class_value[] = {inst.classValue()};
+	public void trainOnInstance(float[] featureValues, double class_value[]) {
 		NDList d = new NDList(trainer.getManager().create(featureValues));
 		NDList l = new NDList(trainer.getManager().create(class_value));
 //		GradientCollector collector = trainer.newGradientCollector();
+		boolean calculateGradients = true;
 		try (GradientCollector collector = trainer.newGradientCollector()) {
 			NDList preds = trainer.forward(d, l);
 			NDArray lossValue = trainer.getLoss().evaluate(l, preds);
 			if (lossValue.getFloat() == 0.0f){
-				System.out.println("Zero loss");
-//				lossValue.add(0.0001f);
+//				System.out.println("Zero loss");
+				calculateGradients = false;
 			}
 			//			print weights
-			System.out.println(nnmodel.getBlock().getChildren().get("02Linear").getParameters().get("weight").getArray());
-			collector.backward(lossValue);
 //			System.out.println(nnmodel.getBlock().getChildren().get("02Linear").getParameters().get("weight").getArray());
-			this.estimator.setInput(lossValue.getFloat());
+			if (calculateGradients) {
+				collector.backward(lossValue);
+				this.estimator.setInput(lossValue.getFloat());
+			}else {
+				this.estimator.setInput(0.0);
+			}
 			lossValue.close();
 		}catch (Exception e) {
 			System.err.println(e);
 			e.printStackTrace();
 		}
-		trainer.step(); // enforce the calculated weights
+		if (calculateGradients) {
+			trainer.step(); // enforce the calculated weights
+		}
 		d.close();
 		l.close();
+	}
+
+    @Override
+    public void trainOnInstanceImpl(Instance inst) {
+		initializeNetwork(inst);
+
+		float[] featureValues = new float [featureValuesArraySize];
+		setFeatureValuesArray(inst, featureValues, useOneHotEncode.isSet());
+		double class_value[] = {inst.classValue()};
+
+		trainOnInstance(featureValues, class_value);
     }
 
 	@Override
     public double[] getVotesForInstance(Instance inst) {
-		if (nnmodel == null){
-			initializeNetwork(inst);
-		}
+		initializeNetwork(inst);
 		double v [] = classVotesInit.clone();
+
 		float[] featureValues = new float [featureValuesArraySize];
-		int totalOneHotEncodedSize = 0;
-		int totalOneHotEncodedInstances = 0;
-		for(int i=0; i < inst.numInputAttributes(); i++){
-			if (useOneHotEncode.isSet() && inst.attribute(i).isNominal()){
-				featureValues[ i + totalOneHotEncodedSize - totalOneHotEncodedInstances + (int)inst.value(i)] = 1.0f;
-				totalOneHotEncodedSize += inst.attribute(i).numValues();
-				totalOneHotEncodedInstances ++;
-			}else
-			{
-				featureValues[ i + totalOneHotEncodedSize - totalOneHotEncodedInstances] = (float) inst.value(i);
-			}
-		}
+		setFeatureValuesArray(inst, featureValues, useOneHotEncode.isSet());
 
 		NDList d = new NDList(trainer.getManager().create(featureValues));
 		NDList preds = trainer.evaluate(d);
@@ -200,36 +184,43 @@ public class MLP extends AbstractClassifier implements MultiClassClassifier, Reg
         return false;
     }
 
-    private void setFeatureValuesArray(Instance inst, float[] featureValues){
+    public static int getFeatureValuesArraySize(Instance inst, boolean useOneHotEncoding){
 		int totalOneHotEncodedSize = 0;
 		int totalOneHotEncodedInstances = 0;
 		for(int i=0; i < inst.numInputAttributes(); i++){
-			if (inst.attribute(i).isNominal()){
-				featureValues[ i + totalOneHotEncodedSize - totalOneHotEncodedInstances + (int)inst.value(i)] = 1.0f;
+			if (useOneHotEncoding && inst.attribute(i).isNominal()){
+				totalOneHotEncodedSize += inst.attribute(i).numValues();
+				totalOneHotEncodedInstances ++;
+			}
+		}
+		return inst.numInputAttributes() + totalOneHotEncodedSize - totalOneHotEncodedInstances;
+	}
+
+    public static void setFeatureValuesArray(Instance inst, float[] featureValuesArrayToSet, boolean useOneHotEncoding){
+		int totalOneHotEncodedSize = 0;
+		int totalOneHotEncodedInstances = 0;
+		for(int i=0; i < inst.numInputAttributes(); i++){
+			if (useOneHotEncoding && inst.attribute(i).isNominal()){
+				featureValuesArrayToSet[ i + totalOneHotEncodedSize - totalOneHotEncodedInstances + (int)inst.value(i)] = 1.0f;
 				totalOneHotEncodedSize += inst.attribute(i).numValues();
 				totalOneHotEncodedInstances ++;
 			}else
 			{
-				featureValues[ i + totalOneHotEncodedSize - totalOneHotEncodedInstances] = (float) inst.value(i);
+				featureValuesArrayToSet[ i + totalOneHotEncodedSize - totalOneHotEncodedInstances] = (float) inst.value(i);
 			}
 		}
 	}
 
-	private void initializeNetwork(Instance inst) {
+	public void initializeNetwork(Instance inst) {
+		if (nnmodel != null){
+			return;
+		}
 		classVotesInit = new double [inst.numClasses()];
 		for(int i=0;i<inst.numClasses();i++){
 			classVotesInit[i]=0.0f;
 		}
 
-		int totalOneHotEncodedSize = 0;
-		int totalOneHotEncodedInstances = 0;
-		for(int i=0; i < inst.numInputAttributes(); i++){
-			if (inst.attribute(i).isNominal()){
-				totalOneHotEncodedSize += inst.attribute(i).numValues();
-				totalOneHotEncodedInstances ++;
-			}
-		}
-		featureValuesArraySize = inst.numInputAttributes() + totalOneHotEncodedSize - totalOneHotEncodedInstances;
+		featureValuesArraySize = getFeatureValuesArraySize(inst, useOneHotEncode.isSet());
 
 //  ====Different learning rate trackers ===========================================
 		//set the learning rate
@@ -312,6 +303,5 @@ public class MLP extends AbstractClassifier implements MultiClassClassifier, Reg
 			System.err.println(e);
 			e.printStackTrace();
 		}
-
 	}
 }
