@@ -93,11 +93,14 @@ public class MultiMLP extends AbstractClassifier implements MultiClassClassifier
                 this.learningRate = learningRate;
             }
         }
-        MLPConfigs nnConfigs[] = new MLPConfigs[4];
+        MLPConfigs nnConfigs[] = new MLPConfigs[7];
         nnConfigs[0] = new MLPConfigs(MLP.OPTIMIZER_SGD, 0.03f);
         nnConfigs[1] = new MLPConfigs(MLP.OPTIMIZER_SGD, 0.05f);
         nnConfigs[2] = new MLPConfigs(MLP.OPTIMIZER_SGD, 0.07f);
         nnConfigs[3] = new MLPConfigs(MLP.OPTIMIZER_ADAM, 0.01f);
+        nnConfigs[4] = new MLPConfigs(MLP.OPTIMIZER_ADAM, 0.03f);
+        nnConfigs[5] = new MLPConfigs(MLP.OPTIMIZER_ADAM, 0.07f);
+        nnConfigs[6] = new MLPConfigs(MLP.OPTIMIZER_ADAM, 0.09f);
 //            nnConfigs[0] = new MLPConfigs(MLP.OPTIMIZER_RMSPROP, 0.01f);
 //            nnConfigs[0] = new MLPConfigs(MLP.OPTIMIZER_ADAGRAD, 0.03f);
 //            nnConfigs[0] = new MLPConfigs(MLP.OPTIMIZER_ADAGRAD, 0.07f);

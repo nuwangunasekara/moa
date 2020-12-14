@@ -188,7 +188,7 @@ public class MLP extends AbstractClassifier implements MultiClassClassifier, Reg
 		int totalOneHotEncodedSize = 0;
 		int totalOneHotEncodedInstances = 0;
 		for(int i=0; i < inst.numInputAttributes(); i++){
-			if (useOneHotEncoding && inst.attribute(i).isNominal()){
+			if (useOneHotEncoding && inst.attribute(i).isNominal() && (inst.attribute(i).numValues() > 2) ){
 				totalOneHotEncodedSize += inst.attribute(i).numValues();
 				totalOneHotEncodedInstances ++;
 			}
@@ -200,7 +200,7 @@ public class MLP extends AbstractClassifier implements MultiClassClassifier, Reg
 		int totalOneHotEncodedSize = 0;
 		int totalOneHotEncodedInstances = 0;
 		for(int i=0; i < inst.numInputAttributes(); i++){
-			if (useOneHotEncoding && inst.attribute(i).isNominal()){
+			if (useOneHotEncoding && inst.attribute(i).isNominal() && (inst.attribute(i).numValues() > 2) ){
 				featureValuesArrayToSet[ i + totalOneHotEncodedSize - totalOneHotEncodedInstances + (int)inst.value(i)] = 1.0f;
 				totalOneHotEncodedSize += inst.attribute(i).numValues();
 				totalOneHotEncodedInstances ++;
