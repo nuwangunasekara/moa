@@ -1,0 +1,20 @@
+add <source>8</source> inside javadoc-configuration
+
+<plugin>
+    <groupId>org.apache.maven.plugins</groupId>
+    <artifactId>maven-javadoc-plugin</artifactId>
+    <configuration>
+      <source>8</source>
+
+from: https://bugs.openjdk.java.net/browse/JDK-8212233
+
+
+then execute:
+
+mvn clean install -DskipTests=true
+mvn -f release.xml prepare-package deb:package install
+
+
+LATEST
+mvn clean install -DskipTests=true -Dmaven.javadoc.skip=true -Dlatex.skipBuild=true
+
