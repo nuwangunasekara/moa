@@ -23,7 +23,7 @@
 BASEDIR=`dirname $0`/..
 BASEDIR=`(cd "$BASEDIR"; pwd)`
 REPO=$BASEDIR/../../target/classes
-MAVEN_REPO='/Users/ng98/.m2/repository'
+MAVEN_REPO="$(realpath ~)/.m2/repository"
 JAR_PATHS="$(for j in $(find $MAVEN_REPO -name '*.jar');do printf '%s:' $j; done)"
 CLASSPATH="$JAR_PATHS$REPO/"
 JAVA_AGENT_PATH="$(find $MAVEN_REPO -name 'sizeofag-1.0.4.jar')"
@@ -88,7 +88,7 @@ done
 # launch class
 "$JCMD" \
   -classpath "$CLASSPATH" \
-  -Xmx$MEMORY \
+  -Xmx50g -Xms50m -Xss1g \
   -javaagent:"$JAVA_AGENT_PATH" \
   $MAIN \
   $ARGS
