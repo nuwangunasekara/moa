@@ -49,10 +49,18 @@ public class MLP extends AbstractClassifier implements MultiClassClassifier, Reg
 
     private static final long serialVersionUID = 1L;
 
+	public static class NormalizeInfo{
+		double sumOfValues = 0.0f;
+		double sumOfSquares = 0.0f;
+	}
+
 	public static final int OPTIMIZER_SGD = 0;
 	public static final int OPTIMIZER_RMSPROP = 1;
 	public static final int OPTIMIZER_ADAGRAD = 2;
 	public static final int OPTIMIZER_ADAM = 3;
+
+	protected long samplesSeen = 0;
+	protected NormalizeInfo[] normalizeInfo = null;
 
 	public FloatOption learningRateOption = new FloatOption(
 			"learningRate",
@@ -69,8 +77,10 @@ public class MLP extends AbstractClassifier implements MultiClassClassifier, Reg
 	public FlagOption useOneHotEncode = new FlagOption("useOneHotEncode", 'h',
 			"use one hot encoding");
 
+	public FlagOption useNormalization = new FlagOption("useNormalization", 'n',
+			"Normalize data");
 
-    @Override
+	@Override
     public String getPurposeString() {
         return "NN: special.";
     }
@@ -80,7 +90,6 @@ public class MLP extends AbstractClassifier implements MultiClassClassifier, Reg
 
 	protected Model nnmodel = null;
 	protected Trainer trainer = null;
-	protected double classVotesInit[];
 	protected int featureValuesArraySize = 0;
 
 	@Override
@@ -99,7 +108,7 @@ public class MLP extends AbstractClassifier implements MultiClassClassifier, Reg
     public void resetLearningImpl() {
     }
 
-	public void trainOnInstance(float[] featureValues, double class_value[]) {
+	public void trainOnFeatureValues(float[] featureValues, double class_value[]) {
 		NDList d = new NDList(trainer.getManager().create(featureValues));
 		NDList l = new NDList(trainer.getManager().create(class_value));
 //		GradientCollector collector = trainer.newGradientCollector();
@@ -136,24 +145,20 @@ public class MLP extends AbstractClassifier implements MultiClassClassifier, Reg
 		initializeNetwork(inst);
 
 		float[] featureValues = new float [featureValuesArraySize];
-		setFeatureValuesArray(inst, featureValues, useOneHotEncode.isSet());
+		setFeatureValuesArray(inst, featureValues, useOneHotEncode.isSet(), false, normalizeInfo, samplesSeen);
 		double class_value[] = {inst.classValue()};
 
-		trainOnInstance(featureValues, class_value);
+		trainOnFeatureValues(featureValues, class_value);
     }
 
-	@Override
-    public double[] getVotesForInstance(Instance inst) {
+    public double[] getVotesForFeatureValues(Instance inst, float[] featureValues) {
 		initializeNetwork(inst);
-		double v [] = classVotesInit.clone();
-
-		float[] featureValues = new float [featureValuesArraySize];
-		setFeatureValuesArray(inst, featureValues, useOneHotEncode.isSet());
+		double v [] = new double [inst.numClasses()];
 
 		NDList d = new NDList(trainer.getManager().create(featureValues));
 		NDList preds = trainer.evaluate(d);
 
-		for(int i=0;i<inst.numClasses();i++){
+		for(int i=0; i<inst.numClasses(); i++){
 			v[i] = (double)preds.get(0).toFloatArray()[i];
 		}
 
@@ -162,6 +167,16 @@ public class MLP extends AbstractClassifier implements MultiClassClassifier, Reg
 
 		return v;
     }
+
+	@Override
+	public double[] getVotesForInstance(Instance inst) {
+		samplesSeen ++;
+		initializeNetwork(inst);
+		float[] featureValues = new float [featureValuesArraySize];
+		setFeatureValuesArray(inst, featureValues, useOneHotEncode.isSet(), true, normalizeInfo, samplesSeen);
+		return getVotesForFeatureValues(inst, featureValues);
+	}
+
 
 	@Override
 	public ImmutableCapabilities defineImmutableCapabilities() {
@@ -196,31 +211,70 @@ public class MLP extends AbstractClassifier implements MultiClassClassifier, Reg
 		return inst.numInputAttributes() + totalOneHotEncodedSize - totalOneHotEncodedInstances;
 	}
 
-    public static void setFeatureValuesArray(Instance inst, float[] featureValuesArrayToSet, boolean useOneHotEncoding){
+	public static double getNormalizedValue(double value, double sumOfValues, double sumOfSquares, long samplesSeen){
+		// Normalize data
+		double variance = 0.0f;
+		double sd = 0.0f;
+		double mean = 0.0f;
+		if (samplesSeen > 1){
+			mean = sumOfValues / samplesSeen;
+			variance = (sumOfSquares - ((sumOfValues * sumOfValues) / samplesSeen)) / samplesSeen;
+		}
+		sd = Math.sqrt(variance);
+		if (sd > 0.0f){
+			return (value - mean) / (3 * sd);
+		} else{
+			return 0.0f;
+		}
+	}
+
+    public static void setFeatureValuesArray(Instance inst, float[] featureValuesArrayToSet, boolean useOneHotEncoding, boolean testing, NormalizeInfo[] normalizeInfo, long samplesSeen){
 		int totalOneHotEncodedSize = 0;
 		int totalOneHotEncodedInstances = 0;
 		for(int i=0; i < inst.numInputAttributes(); i++){
+			int index = i + totalOneHotEncodedSize - totalOneHotEncodedInstances;
 			if (useOneHotEncoding && inst.attribute(i).isNominal() && (inst.attribute(i).numValues() > 2) ){
-				featureValuesArrayToSet[ i + totalOneHotEncodedSize - totalOneHotEncodedInstances + (int)inst.value(i)] = 1.0f;
+				featureValuesArrayToSet[index + (int)inst.value(i)] = 1.0f;
 				totalOneHotEncodedSize += inst.attribute(i).numValues();
 				totalOneHotEncodedInstances ++;
 			}else
 			{
-				featureValuesArrayToSet[ i + totalOneHotEncodedSize - totalOneHotEncodedInstances] = (float) inst.value(i);
+				if( inst.attribute(i).isNumeric() && (normalizeInfo != null) && (normalizeInfo[index] != null) ){
+					// Normalize data
+					if (testing) {
+						normalizeInfo[index].sumOfSquares += inst.value(i) * inst.value(i);
+						normalizeInfo[index].sumOfValues += inst.value(i);
+					}
+					featureValuesArrayToSet[index] = (float) getNormalizedValue(inst.value(i), normalizeInfo[index].sumOfValues, normalizeInfo[index].sumOfSquares, samplesSeen);
+				}else{
+					featureValuesArrayToSet[index] = (float) inst.value(i);
+				}
 			}
 		}
+
+//		if (testing && samplesSeen < 2) {
+//			for(int i=0; i < featureValuesArrayToSet.length; i++) {
+//				System.out.print(featureValuesArrayToSet[i]);
+//				System.out.print(",");
+//			}
+//		}
+//		if (testing && samplesSeen < 2){
+//			System.out.print("\n");
+//		}
 	}
 
 	public void initializeNetwork(Instance inst) {
 		if (nnmodel != null){
 			return;
 		}
-		classVotesInit = new double [inst.numClasses()];
-		for(int i=0;i<inst.numClasses();i++){
-			classVotesInit[i]=0.0f;
-		}
 
 		featureValuesArraySize = getFeatureValuesArraySize(inst, useOneHotEncode.isSet());
+		if (useNormalization.isSet()) {
+			normalizeInfo = new NormalizeInfo[featureValuesArraySize];
+			for(int i=0; i < normalizeInfo.length; i++){
+				normalizeInfo[i] = new NormalizeInfo();
+			}
+		}
 
 //  ====Different learning rate trackers ===========================================
 		//set the learning rate

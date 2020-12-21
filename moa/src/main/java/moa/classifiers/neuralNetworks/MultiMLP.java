@@ -16,9 +16,14 @@ public class MultiMLP extends AbstractClassifier implements MultiClassClassifier
     private static final long serialVersionUID = 1L;
     protected MLP[] nn = null;
     protected int featureValuesArraySize = 0;
+    protected long samplesSeen = 0;
+    protected MLP.NormalizeInfo[] normalizeInfo = null;
 
     public FlagOption useOneHotEncode = new FlagOption("useOneHotEncode", 'h',
             "use one hot encoding");
+
+    public FlagOption useNormalization = new FlagOption("useNormalization", 'n',
+            "Normalize data");
 
     @Override
     public void resetLearningImpl() {
@@ -32,18 +37,19 @@ public class MultiMLP extends AbstractClassifier implements MultiClassClassifier
         }
 
         float[] featureValues = new float [featureValuesArraySize];
-        MLP.setFeatureValuesArray(instance, featureValues, useOneHotEncode.isSet());
+        MLP.setFeatureValuesArray(instance, featureValues, useOneHotEncode.isSet(),false, normalizeInfo, samplesSeen);
         double class_value[] = {instance.classValue()};
 
         for (int i = 0 ; i < this.nn.length ; i++) {
             this.nn[i].initializeNetwork(instance);
-            this.nn[i].trainOnInstance(featureValues, class_value);
+            this.nn[i].trainOnFeatureValues(featureValues, class_value);
         }
     }
 
     @Override
     public double[] getVotesForInstance(Instance instance) {
         int min_index = 0;
+        samplesSeen ++;
         if(this.nn == null) {
             initNNs(instance);
         }else {
@@ -54,7 +60,9 @@ public class MultiMLP extends AbstractClassifier implements MultiClassClassifier
                 }
             }
         }
-        return this.nn[min_index].getVotesForInstance(instance);
+        float[] featureValues = new float [featureValuesArraySize];
+        MLP.setFeatureValuesArray(instance, featureValues, useOneHotEncode.isSet(), true, normalizeInfo, samplesSeen);
+        return this.nn[min_index].getVotesForFeatureValues(instance, featureValues);
     }
 
     @Override
@@ -93,14 +101,15 @@ public class MultiMLP extends AbstractClassifier implements MultiClassClassifier
                 this.learningRate = learningRate;
             }
         }
-        MLPConfigs nnConfigs[] = new MLPConfigs[7];
+        MLPConfigs nnConfigs[] = new MLPConfigs[8];
         nnConfigs[0] = new MLPConfigs(MLP.OPTIMIZER_SGD, 0.03f);
         nnConfigs[1] = new MLPConfigs(MLP.OPTIMIZER_SGD, 0.05f);
         nnConfigs[2] = new MLPConfigs(MLP.OPTIMIZER_SGD, 0.07f);
-        nnConfigs[3] = new MLPConfigs(MLP.OPTIMIZER_ADAM, 0.01f);
-        nnConfigs[4] = new MLPConfigs(MLP.OPTIMIZER_ADAM, 0.03f);
-        nnConfigs[5] = new MLPConfigs(MLP.OPTIMIZER_ADAM, 0.07f);
-        nnConfigs[6] = new MLPConfigs(MLP.OPTIMIZER_ADAM, 0.09f);
+        nnConfigs[3] = new MLPConfigs(MLP.OPTIMIZER_RMSPROP, 0.01f);
+        nnConfigs[4] = new MLPConfigs(MLP.OPTIMIZER_ADAGRAD, 0.03f);
+        nnConfigs[5] = new MLPConfigs(MLP.OPTIMIZER_ADAGRAD, 0.07f);
+        nnConfigs[6] = new MLPConfigs(MLP.OPTIMIZER_ADAGRAD, 0.09f);
+        nnConfigs[7] = new MLPConfigs(MLP.OPTIMIZER_ADAM, 0.01f);
 //            nnConfigs[0] = new MLPConfigs(MLP.OPTIMIZER_RMSPROP, 0.01f);
 //            nnConfigs[0] = new MLPConfigs(MLP.OPTIMIZER_ADAGRAD, 0.03f);
 //            nnConfigs[0] = new MLPConfigs(MLP.OPTIMIZER_ADAGRAD, 0.07f);
@@ -115,6 +124,12 @@ public class MultiMLP extends AbstractClassifier implements MultiClassClassifier
         }
 
         featureValuesArraySize = MLP.getFeatureValuesArraySize(instance, useOneHotEncode.isSet());
+        if (useNormalization.isSet()) {
+            normalizeInfo = new MLP.NormalizeInfo[featureValuesArraySize];
+            for(int i=0; i < normalizeInfo.length; i++){
+                normalizeInfo[i] = new MLP.NormalizeInfo();
+            }
+        }
     }
 
     @Override
