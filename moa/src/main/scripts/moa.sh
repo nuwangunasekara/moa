@@ -88,7 +88,7 @@ done
 # launch class
 "$JCMD" \
   -classpath "$CLASSPATH" \
-  -Xmx50g -Xms50m -Xss1g \
+  -Xmx8g -Xms50m -Xss1g \
   -javaagent:"$JAVA_AGENT_PATH" \
   $MAIN \
   $ARGS
