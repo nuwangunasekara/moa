@@ -1,6 +1,7 @@
 package moa.classifiers.neuralNetworks;
 
 import com.github.javacliparser.FlagOption;
+import com.github.javacliparser.MultiChoiceOption;
 import com.yahoo.labs.samoa.instances.Instance;
 import moa.capabilities.CapabilitiesHandler;
 import moa.capabilities.Capability;
@@ -9,6 +10,7 @@ import moa.classifiers.AbstractClassifier;
 import moa.classifiers.MultiClassClassifier;
 import moa.core.Measurement;
 
+import java.util.concurrent.*;
 
 
 public class MultiMLP extends AbstractClassifier implements MultiClassClassifier, CapabilitiesHandler {
@@ -18,12 +20,23 @@ public class MultiMLP extends AbstractClassifier implements MultiClassClassifier
     protected int featureValuesArraySize = 0;
     protected long samplesSeen = 0;
     protected MLP.NormalizeInfo[] normalizeInfo = null;
+    private float[] featureValues = null;
+    private double [] class_value = null;
+    private ExecutorService exService = null;
 
     public FlagOption useOneHotEncode = new FlagOption("useOneHotEncode", 'h',
             "use one hot encoding");
 
     public FlagOption useNormalization = new FlagOption("useNormalization", 'n',
             "Normalize data");
+
+    public MultiChoiceOption trainingMethodOption = new MultiChoiceOption("trainingMethod", 't',
+            "The training method to use: Sequential, Use threads",
+            new String[]{"Sequential", "UseThreads"},
+            new String[]{"Sequential", "UseThreads"}, 1);
+
+    public static final int TRAIN_SEQUENTIAL = 0;
+    public static final int TRAIN_USE_THREADS = 1;
 
     @Override
     public void resetLearningImpl() {
@@ -36,13 +49,75 @@ public class MultiMLP extends AbstractClassifier implements MultiClassClassifier
             initNNs(instance);
         }
 
-        float[] featureValues = new float [featureValuesArraySize];
         MLP.setFeatureValuesArray(instance, featureValues, useOneHotEncode.isSet(),false, normalizeInfo, samplesSeen);
-        double class_value[] = {instance.classValue()};
+        class_value[0] = instance.classValue();
 
-        for (int i = 0 ; i < this.nn.length ; i++) {
-            this.nn[i].initializeNetwork(instance);
-            this.nn[i].trainOnFeatureValues(featureValues, class_value);
+        switch (this.trainingMethodOption.getChosenIndex()) {
+            case TRAIN_SEQUENTIAL:
+                for (MLP mlp : this.nn) {
+                    mlp.initializeNetwork(instance);
+                    mlp.trainOnFeatureValues(featureValues, class_value);
+                }
+                break;
+            case TRAIN_USE_THREADS:
+                class TrainThread implements Callable<Boolean> {
+                    private final MLP nn;
+                    private final float[] featureValues;
+                    private final double [] class_value;
+
+                    public TrainThread(MLP nn, float[] featureValues, double [] class_value){
+                        this.nn = nn;
+                        this.featureValues = featureValues;
+                        this.class_value = class_value;
+                    }
+
+                    @Override
+                    public Boolean call() {
+                        try {
+                            this.nn.trainOnFeatureValues(this.featureValues, this.class_value);
+//                        System.out.println(Thread.currentThread().getName());
+                        } catch (NullPointerException e){
+//                            System.err.println("Error: Model failed during training.");
+                            e.printStackTrace();
+                            System.exit(1);
+                        }
+                        return Boolean.TRUE;
+                    }
+                }
+//                TrainThread[] trainThreadArray = new TrainThread[this.nn.length];
+                final Future<Boolean> [] runFuture = new Future[this.nn.length];
+                for (int i =0; i < this.nn.length; i++) {
+//                    trainThreadArray[i] = new TrainThread(this.nn[i], this.featureValues, this.class_value);
+                    runFuture[i] = exService.submit(new TrainThread(this.nn[i], this.featureValues, this.class_value));
+                }
+                int runningCount = this.nn.length;
+                while (runningCount != 0){
+                    runningCount = 0;
+                    for (int i =0; i < this.nn.length; i++) {
+                        try {
+                            final Boolean returnedValue = runFuture[i].get();
+                            if (!returnedValue.equals(Boolean.TRUE)){
+                                runningCount++;
+                            }
+                        } catch (InterruptedException | ExecutionException e) {
+                            e.printStackTrace();
+                        }
+                    }
+                }
+//                for (int i =0; i < trainThreadArray.length; i++) {
+//                    trainThreadArray[i].start();
+//                }
+
+//                for (int i =0; i < trainThreadArray.length; i++) {
+//                    try {
+//                        trainThreadArray[i].join();
+////                        trainThreadArray[i].
+//                    }catch(Exception e) {
+//                        System.err.println("Error: Model "+ i +" failed during training.");
+//                        e.printStackTrace();
+//                    }
+//                }
+                break;
         }
     }
 
@@ -60,7 +135,7 @@ public class MultiMLP extends AbstractClassifier implements MultiClassClassifier
                 }
             }
         }
-        float[] featureValues = new float [featureValuesArraySize];
+
         MLP.setFeatureValuesArray(instance, featureValues, useOneHotEncode.isSet(), true, normalizeInfo, samplesSeen);
         return this.nn[min_index].getVotesForFeatureValues(instance, featureValues);
     }
@@ -94,14 +169,14 @@ public class MultiMLP extends AbstractClassifier implements MultiClassClassifier
 //	{'optimizer_type': OP_TYPE_ADAM_NC, 'l_rate': 0.01},
 //			]
         class MLPConfigs{
-            int optimizerType;
-            float learningRate = 0.0f;
+            private final int optimizerType;
+            private final float learningRate;
             MLPConfigs(int optimizerType, float learningRate){
                 this.optimizerType = optimizerType;
                 this.learningRate = learningRate;
             }
         }
-        MLPConfigs nnConfigs[] = new MLPConfigs[8];
+        MLPConfigs [] nnConfigs = new MLPConfigs[8];
         nnConfigs[0] = new MLPConfigs(MLP.OPTIMIZER_SGD, 0.03f);
         nnConfigs[1] = new MLPConfigs(MLP.OPTIMIZER_SGD, 0.05f);
         nnConfigs[2] = new MLPConfigs(MLP.OPTIMIZER_SGD, 0.07f);
@@ -110,6 +185,7 @@ public class MultiMLP extends AbstractClassifier implements MultiClassClassifier
         nnConfigs[5] = new MLPConfigs(MLP.OPTIMIZER_ADAGRAD, 0.07f);
         nnConfigs[6] = new MLPConfigs(MLP.OPTIMIZER_ADAGRAD, 0.09f);
         nnConfigs[7] = new MLPConfigs(MLP.OPTIMIZER_ADAM, 0.01f);
+
 //            nnConfigs[0] = new MLPConfigs(MLP.OPTIMIZER_RMSPROP, 0.01f);
 //            nnConfigs[0] = new MLPConfigs(MLP.OPTIMIZER_ADAGRAD, 0.03f);
 //            nnConfigs[0] = new MLPConfigs(MLP.OPTIMIZER_ADAGRAD, 0.07f);
@@ -121,9 +197,14 @@ public class MultiMLP extends AbstractClassifier implements MultiClassClassifier
             this.nn[i].optimizerTypeOption.setChosenIndex(nnConfigs[i].optimizerType);
             this.nn[i].learningRateOption.setValue(nnConfigs[i].learningRate);
             this.nn[i].useOneHotEncode.setValue(useOneHotEncode.isSet());
+            this.nn[i].initializeNetwork(instance);
         }
 
+        exService = Executors.newFixedThreadPool(nnConfigs.length);
+
+        class_value = new double[1];
         featureValuesArraySize = MLP.getFeatureValuesArraySize(instance, useOneHotEncode.isSet());
+        featureValues = new float [featureValuesArraySize];
         if (useNormalization.isSet()) {
             normalizeInfo = new MLP.NormalizeInfo[featureValuesArraySize];
             for(int i=0; i < normalizeInfo.length; i++){

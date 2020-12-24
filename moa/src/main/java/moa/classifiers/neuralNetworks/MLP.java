@@ -17,6 +17,7 @@
  */
 package moa.classifiers.neuralNetworks;
 
+import ai.djl.engine.Engine;
 import com.github.javacliparser.FlagOption;
 import moa.capabilities.Capability;
 import moa.capabilities.ImmutableCapabilities;
@@ -34,6 +35,7 @@ import ai.djl.Device;
 import ai.djl.Model;
 import ai.djl.basicmodelzoo.basic.Mlp;
 import ai.djl.ndarray.NDArray;
+import ai.djl.ndarray.NDManager;
 import ai.djl.ndarray.NDList;
 import ai.djl.ndarray.types.Shape;
 import ai.djl.nn.Block;
@@ -61,6 +63,9 @@ public class MLP extends AbstractClassifier implements MultiClassClassifier, Reg
 
 	protected long samplesSeen = 0;
 	protected NormalizeInfo[] normalizeInfo = null;
+
+	private float[] pFeatureValues = null;
+	private double [] pClassValue = null;
 
 	public FloatOption learningRateOption = new FloatOption(
 			"learningRate",
@@ -91,6 +96,10 @@ public class MLP extends AbstractClassifier implements MultiClassClassifier, Reg
 	protected Model nnmodel = null;
 	protected Trainer trainer = null;
 	protected int featureValuesArraySize = 0;
+	private final NDManager trainingNDManager = Engine.getInstance().newBaseManager();
+	private final NDManager testingNDManager= Engine.getInstance().newBaseManager();
+	private double [] votes;
+
 
 	@Override
 	public void setModelContext(InstancesHeader context) {
@@ -108,73 +117,79 @@ public class MLP extends AbstractClassifier implements MultiClassClassifier, Reg
     public void resetLearningImpl() {
     }
 
-	public void trainOnFeatureValues(float[] featureValues, double class_value[]) {
-		NDList d = new NDList(trainer.getManager().create(featureValues));
-		NDList l = new NDList(trainer.getManager().create(class_value));
-//		GradientCollector collector = trainer.newGradientCollector();
-		boolean calculateGradients = true;
-		try (GradientCollector collector = trainer.newGradientCollector()) {
+	public void trainOnFeatureValues(float[] featureValues, double [] classValue) {
+		try{
+			NDManager childNDManager = trainingNDManager.newSubManager();
+			NDList d = new NDList(childNDManager.create(featureValues));
+			NDList l = new NDList(childNDManager.create(classValue));
+
+			GradientCollector collector = trainer.newGradientCollector();
 			NDList preds = trainer.forward(d, l);
 			NDArray lossValue = trainer.getLoss().evaluate(l, preds);
 			if (lossValue.getFloat() == 0.0f){
 //				System.out.println("Zero loss");
-				calculateGradients = false;
+				this.estimator.setInput(0.0);
+			}else{
+				collector.backward(lossValue);
+				this.estimator.setInput(lossValue.getFloat());
+				trainer.step(); // enforce the calculated weights
 			}
 			//			print weights
 //			System.out.println(nnmodel.getBlock().getChildren().get("02Linear").getParameters().get("weight").getArray());
-			if (calculateGradients) {
-				collector.backward(lossValue);
-				this.estimator.setInput(lossValue.getFloat());
-			}else {
-				this.estimator.setInput(0.0);
-			}
+			
+			collector.close();
+			preds.close();
 			lossValue.close();
+			d.close();
+			l.close();
+			childNDManager.close();
 		}catch (Exception e) {
 			System.err.println(e);
 			e.printStackTrace();
+			System.exit(1);
 		}
-		if (calculateGradients) {
-			trainer.step(); // enforce the calculated weights
-		}
-		d.close();
-		l.close();
 	}
 
     @Override
     public void trainOnInstanceImpl(Instance inst) {
 		initializeNetwork(inst);
 
-		float[] featureValues = new float [featureValuesArraySize];
-		setFeatureValuesArray(inst, featureValues, useOneHotEncode.isSet(), false, normalizeInfo, samplesSeen);
-		double class_value[] = {inst.classValue()};
+		setFeatureValuesArray(inst, pFeatureValues, useOneHotEncode.isSet(), false, normalizeInfo, samplesSeen);
+		pClassValue[0] = inst.classValue();
 
-		trainOnFeatureValues(featureValues, class_value);
+		trainOnFeatureValues(pFeatureValues, pClassValue);
     }
 
     public double[] getVotesForFeatureValues(Instance inst, float[] featureValues) {
 		initializeNetwork(inst);
-		double v [] = new double [inst.numClasses()];
 
-		NDList d = new NDList(trainer.getManager().create(featureValues));
-		NDList preds = trainer.evaluate(d);
+		try {
+			NDManager childNDManager = testingNDManager.newSubManager();
+			NDList d = new NDList(childNDManager.create(featureValues));
+			NDList preds = trainer.evaluate(d);
 
-		for(int i=0; i<inst.numClasses(); i++){
-			v[i] = (double)preds.get(0).toFloatArray()[i];
+			for (int i = 0; i < inst.numClasses(); i++) {
+				votes[i] = (double) preds.get(0).toFloatArray()[i];
+			}
+			preds.close();
+			d.close();
+			childNDManager.close();
+		}catch (Exception e) {
+			System.err.println(e);
+			e.printStackTrace();
+			System.exit(1);
 		}
 
-		preds.close();
-		d.close();
-
-		return v;
+		return votes;
     }
 
 	@Override
 	public double[] getVotesForInstance(Instance inst) {
 		samplesSeen ++;
 		initializeNetwork(inst);
-		float[] featureValues = new float [featureValuesArraySize];
-		setFeatureValuesArray(inst, featureValues, useOneHotEncode.isSet(), true, normalizeInfo, samplesSeen);
-		return getVotesForFeatureValues(inst, featureValues);
+
+		setFeatureValuesArray(inst, pFeatureValues, useOneHotEncode.isSet(), true, normalizeInfo, samplesSeen);
+		return getVotesForFeatureValues(inst, pFeatureValues);
 	}
 
 
@@ -214,7 +229,7 @@ public class MLP extends AbstractClassifier implements MultiClassClassifier, Reg
 	public static double getNormalizedValue(double value, double sumOfValues, double sumOfSquares, long samplesSeen){
 		// Normalize data
 		double variance = 0.0f;
-		double sd = 0.0f;
+		double sd;
 		double mean = 0.0f;
 		if (samplesSeen > 1){
 			mean = sumOfValues / samplesSeen;
@@ -268,7 +283,11 @@ public class MLP extends AbstractClassifier implements MultiClassClassifier, Reg
 			return;
 		}
 
+		votes = new double [inst.numClasses()];
+
+		pClassValue =  new double[1];
 		featureValuesArraySize = getFeatureValuesArraySize(inst, useOneHotEncode.isSet());
+		pFeatureValues = new float [featureValuesArraySize];
 		if (useNormalization.isSet()) {
 			normalizeInfo = new NormalizeInfo[featureValuesArraySize];
 			for(int i=0; i < normalizeInfo.length; i++){
@@ -328,9 +347,6 @@ public class MLP extends AbstractClassifier implements MultiClassClassifier, Reg
 			Optimizer optimizer;
 
 			switch(this.optimizerTypeOption.getChosenIndex()) {
-				case MLP.OPTIMIZER_SGD:
-					optimizer = Optimizer.sgd().setLearningRateTracker(learningRateTracker).build();
-					break;
 				case MLP.OPTIMIZER_RMSPROP:
 					optimizer = Optimizer.rmsprop().optLearningRateTracker(learningRateTracker).build();
 					break;
@@ -340,6 +356,7 @@ public class MLP extends AbstractClassifier implements MultiClassClassifier, Reg
 				case MLP.OPTIMIZER_ADAM:
 					optimizer = Optimizer.adam().optLearningRateTracker(learningRateTracker).build();
 					break;
+				case MLP.OPTIMIZER_SGD:
 				default:
 					optimizer = Optimizer.sgd().setLearningRateTracker(learningRateTracker).build();
 					break;
