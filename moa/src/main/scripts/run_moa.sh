@@ -53,8 +53,8 @@ echo "Full results log file = $log_file"
 
 rm -f $log_file
 
-#dataset=(WISDM_ar_v1.1_transformed elecNormNew covtypeNorm kdd99 RBF_f RBF_m spam_corpus LED_g LED_a nomao airlines AGR_a AGR_g)
-dataset=(WISDM_ar_v1.1_transformed elecNormNew)
+dataset=(WISDM_ar_v1.1_transformed elecNormNew covtypeNorm kdd99 RBF_f RBF_m spam_corpus LED_g LED_a nomao airlines AGR_a AGR_g)
+#dataset=(WISDM_ar_v1.1_transformed elecNormNew)
 re_run_count=0
 task_failed=0
 
@@ -100,10 +100,10 @@ do
       fi
     done
 
-    cat $tmp_log_file >> $log_file
     kill $PID
   fi
 
+  cat $tmp_log_file >> $log_file
 
   if [ $task_failed -eq 0 ]; then
     re_run_count=0
