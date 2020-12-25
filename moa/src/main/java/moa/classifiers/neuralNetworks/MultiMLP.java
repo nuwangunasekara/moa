@@ -40,7 +40,19 @@ public class MultiMLP extends AbstractClassifier implements MultiClassClassifier
 
     @Override
     public void resetLearningImpl() {
-
+        if (nn != null) {
+            exService.shutdownNow();
+            exService = null;
+            for (int i = 0; i < this.nn.length; i++) {
+                nn[i] = null;
+            }
+            nn = null;
+            featureValuesArraySize = 0;
+            samplesSeen = 0;
+            normalizeInfo = null;
+            featureValues = null;
+            class_value = null;
+        }
     }
 
     @Override

@@ -1,24 +1,58 @@
-#java -cp classes/ -javaagent:classes/sizeofag-1.0.4.jar -Xmx50g -Xms50m -Xss1g moa.DoTask "EvaluateInterleavedTestThenTrain -l (lazy.kNN) -s  generators.WaveformGenerator -i 100000000 -f 1000000"#moa_path='/Scratch/ng98/JavaSetup1/moa'
-if [ $# -lt 4 ]; then
-  echo "Usage: $0 <moa_path_classes_path> <maven_repo> <dataset_dir> <out_csv_dir>"
-  echo "e.g:   $0 ~/Desktop/moa-fork/moa/target/classes/ ~/.m2/repository/ ~/Desktop/datasets/NEW/unzipped/ ~/Desktop/results"
+#trap "kill 0" EXIT
+
+if [ $# -lt 2 ]; then
+  echo "Usage: $0 <dataset_dir> <out_csv_dir>"
+  echo "e.g:   $0 ~/Desktop/datasets/NEW/unzipped/ ~/Desktop/results"
   exit 1
 fi
-moa_path_classes_path=$1
-maven_repo=$2
-dataset_dir=$3
-out_csv_dir=$4
 
-jar_paths="$(for j in $(find $maven_repo -name '*.jar');do printf '%s:' $j; done)"
-class_paths="$jar_pathsS$moa_path_classes_path/"
-java_agent_path="$(find $maven_repo -name 'sizeofag-1.0.4.jar')"
+dataset_dir=$1
+out_csv_dir=$2
 
-java_cmd="java -cp $class_paths"
-javaagent_cmd="-javaagent:$java_agent_path"
+BASEDIR=`dirname $0`/..
+BASEDIR=`(cd "$BASEDIR"; pwd)`
+REPO=$BASEDIR/../../target/classes
+MAVEN_REPO="$(realpath ~)/.m2/repository"
+JAR_PATHS="$(for j in $(find $MAVEN_REPO -name '*.jar');do printf '%s:' $j; done)"
+CLASSPATH="$JAR_PATHS$REPO/"
+JAVA_AGENT_PATH="$(find $MAVEN_REPO -name 'sizeofag-1.0.4.jar')"
 
 
-for dataset in elecNormNew;
-#for dataset in internet_ads_Normalized_Randomized WISDM_ar_v1.1_transformed nomao_Normalized elecNormNew airlines_Normalized covtypeNorm kdd99 AGR_a_Normalized AGR_g_Normalized RBF_f RBF_m LED_a LED_g spam_corpus;
+JCMD=java
+case $(uname)  in
+
+  Darwin)
+    if [ -f "$(/usr/libexec/java_home -v 1.8.0_271)/bin/java" ]
+    then
+      JCMD="$(/usr/libexec/java_home -v 1.8.0_271)/bin/java"
+    fi
+    echo "MacOS"
+    ;;
+
+  Linux)
+    if [ -f "$JAVA_HOME/bin/java" ]
+    then
+      JCMD="$JAVA_HOME/bin/java"
+    fi
+    echo "Linux"
+    ;;
+
+  *)
+    JCMD=java
+    ;;
+esac
+
+# learner='meta.StreamingRandomPatches -s 10'
+learner='neuralNetworks.MultiMLP -h -n -t UseThreads'
+# learner='lazy.kNN'
+
+log_file="${out_csv_dir}/full.log"
+tmp_log_file="${out_csv_dir}/tmp.log"
+
+rm -f $log_file
+
+#for dataset in WISDM_ar_v1.1_transformed elecNormNew;
+for dataset in WISDM_ar_v1.1_transformed elecNormNew covtypeNorm kdd99 RBF_f RBF_m spam_corpus LED_g LED_a nomao airlines AGR_a AGR_g;
 do
   in_file="${dataset_dir}/${dataset}.arff"
   out_file="${out_csv_dir}/${dataset}.csv"
@@ -27,12 +61,34 @@ do
     echo "$out_file already available"
   fi
 
+  rm -f tmp_log_file
 
+  exp_cmd="moa.DoTask \"EvaluateInterleavedTestThenTrain -l ($learner) -s (ArffFileStream -f $in_file) -i 10000000 -f 10000000 -q 10000000 -d $out_file\" &>$tmp_log_file &"
+  echo "\n$exp_cmd\n"
+  echo "\n$exp_cmd\n" > $tmp_log_file
+"$JCMD" \
+  -classpath "$CLASSPATH" \
+  -Xmx8g -Xms50m -Xss1g \
+  -javaagent:"$JAVA_AGENT_PATH" \
+  moa.DoTask "EvaluateInterleavedTestThenTrain -l ($learner) -s (ArffFileStream -f $in_file) -i 10000000 -f 10000000 -q 10000000 -d $out_file" &>$tmp_log_file &
 
-#  learner='(meta.StreamingRandomPatches -s 10)'
-  learner='neuralNetworks.MLP'
-#  learner='lazy.kNN'
+  if [ -z $! ]; then
+    echo 'Command failed'
+    continue
+  fi
+  PID=$!
 
-  echo "$java_cmd $javaagent_cmd -Xmx50g -Xms50m -Xss1g moa.DoTask \"EvaluateInterleavedTestThenTrain -l ($learner) -s (ArffFileStream -f $in_file) -i 10000000 -f 10000000 -q 10000000 -d $out_file\""
-  $java_cmd $javaagent_cmd -Xmx50g -Xms50m -Xss1g moa.DoTask "EvaluateInterleavedTestThenTrain -l ($learner) -s (ArffFileStream -f $in_file) -i 10000000 -f 10000000 -q 10000000 -d $out_file"
+  echo "PID=$PID : $exp_cmd"
+
+  sleep 5
+
+  while [ $(grep -m 1 -c 'Task completed' $tmp_log_file ) -lt 1 ];
+  do
+    sleep 60
+    echo -ne "Waiting for exp with $PID to finish\r"
+  done
+
+  cat $tmp_log_file >> $log_file
+  kill $PID
+
 done
