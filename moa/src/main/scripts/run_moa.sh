@@ -85,7 +85,13 @@ do
   while [ $(grep -m 1 -c 'Task completed' $tmp_log_file ) -lt 1 ];
   do
     sleep 60
-    echo -ne "Waiting for exp with $PID to finish\r"
+    if ! ps -p $PID;
+    then
+      echo "Task (PID= $PID ) failed"
+      break
+    esle
+      echo -ne "Waiting for exp with $PID to finish\r"
+    fi
   done
 
   cat $tmp_log_file >> $log_file
