@@ -47,15 +47,24 @@ learner='neuralNetworks.MultiMLP -h -n -t UseThreads'
 # learner='lazy.kNN'
 
 log_file="${out_csv_dir}/full.log"
-tmp_log_file="${out_csv_dir}/tmp.log"
+
+echo "Full results log file = $log_file"
+
 
 rm -f $log_file
 
-#for dataset in WISDM_ar_v1.1_transformed elecNormNew;
-for dataset in WISDM_ar_v1.1_transformed elecNormNew covtypeNorm kdd99 RBF_f RBF_m spam_corpus LED_g LED_a nomao airlines AGR_a AGR_g;
+#dataset=(WISDM_ar_v1.1_transformed elecNormNew covtypeNorm kdd99 RBF_f RBF_m spam_corpus LED_g LED_a nomao airlines AGR_a AGR_g)
+dataset=(WISDM_ar_v1.1_transformed elecNormNew)
+re_run_count=0
+task_failed=0
+
+for (( i=0; i<${#dataset[@]}; i++ ))
 do
-  in_file="${dataset_dir}/${dataset}.arff"
-  out_file="${out_csv_dir}/${dataset}.csv"
+  task_failed=0
+  echo "Dataset = ${dataset[$i]}"
+  in_file="${dataset_dir}/${dataset[$i]}.arff"
+  out_file="${out_csv_dir}/${dataset[$i]}.csv"
+  tmp_log_file="${out_csv_dir}/${dataset[$i]}.log"
 
   if [ -f $out_file ]; then
     echo "$out_file already available"
@@ -73,28 +82,41 @@ do
   moa.DoTask "EvaluateInterleavedTestThenTrain -l ($learner) -s (ArffFileStream -f $in_file) -i 10000000 -f 10000000 -q 10000000 -d $out_file" &>$tmp_log_file &
 
   if [ -z $! ]; then
-    echo 'Command failed'
-    continue
+    task_failed=1
+  else
+    PID=$!
+    echo "PID=$PID : $exp_cmd"
+    sleep 5
+
+    while [ $(grep -m 1 -c 'Task completed' $tmp_log_file ) -lt 1 ];
+    do
+      sleep 60
+      if ! ps -p $PID &>/dev/null;
+      then
+        task_failed=1
+        break
+      esle
+        echo -ne "Waiting for exp with $PID to finish\r"
+      fi
+    done
+
+    cat $tmp_log_file >> $log_file
+    kill $PID
   fi
-  PID=$!
 
-  echo "PID=$PID : $exp_cmd"
 
-  sleep 5
-
-  while [ $(grep -m 1 -c 'Task completed' $tmp_log_file ) -lt 1 ];
-  do
-    sleep 60
-    if ! ps -p $PID;
-    then
-      echo "Task (PID= $PID ) failed"
-      break
-    esle
-      echo -ne "Waiting for exp with $PID to finish\r"
+  if [ $task_failed -eq 0 ]; then
+    re_run_count=0
+  else
+    echo "Task=$i dataset=${dataset[$i]} PID=$PID ) failed."
+    if [ $re_run_count -lt 2 ]; then
+      re_run_count=$((re_run_count+1))
+      echo "Re-running it for the $re_run_count time."
+      i=$((i-1))
+    else
+      echo "Not Re-running it for the $((re_run_count+1)) time."
+      re_run_count=0
     fi
-  done
-
-  cat $tmp_log_file >> $log_file
-  kill $PID
+  fi
 
 done
