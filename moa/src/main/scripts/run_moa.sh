@@ -53,7 +53,7 @@ echo "Full results log file = $log_file"
 
 rm -f $log_file
 
-dataset=(WISDM_ar_v1.1_transformed elecNormNew covtypeNorm kdd99 RBF_f RBF_m spam_corpus LED_g LED_a nomao airlines AGR_a AGR_g)
+dataset=(RBF_m spam_corpus LED_g LED_a nomao airlines AGR_a AGR_g WISDM_ar_v1.1_transformed elecNormNew covtypeNorm kdd99 RBF_f)
 #dataset=(WISDM_ar_v1.1_transformed elecNormNew)
 re_run_count=0
 task_failed=0
@@ -77,7 +77,7 @@ do
   echo "\n$exp_cmd\n" > $tmp_log_file
 "$JCMD" \
   -classpath "$CLASSPATH" \
-  -Xmx8g -Xms50m -Xss1g \
+  -Xmx16g -Xms50m -Xss1g \
   -javaagent:"$JAVA_AGENT_PATH" \
   moa.DoTask "EvaluateInterleavedTestThenTrain -l ($learner) -s (ArffFileStream -f $in_file) -i 10000000 -f 10000000 -q 10000000 -d $out_file" &>$tmp_log_file &
 
