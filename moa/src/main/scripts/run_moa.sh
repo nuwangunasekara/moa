@@ -60,6 +60,7 @@ task_failed=0
 
 for (( i=0; i<${#dataset[@]}; i++ ))
 do
+  sleep 60
   task_failed=0
   echo "Dataset = ${dataset[$i]}"
   in_file="${dataset_dir}/${dataset[$i]}.arff"
