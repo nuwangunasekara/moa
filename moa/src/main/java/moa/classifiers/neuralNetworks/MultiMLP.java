@@ -193,14 +193,20 @@ public class MultiMLP extends AbstractClassifier implements MultiClassClassifier
                 new MLPConfigs(MLP.OPTIMIZER_SGD, 0.03f),
 //                new MLPConfigs(MLP.OPTIMIZER_SGD, 0.05f),
                 new MLPConfigs(MLP.OPTIMIZER_SGD, 0.07f),
-                new MLPConfigs(MLP.OPTIMIZER_RMSPROP, 0.01f),
-                new MLPConfigs(MLP.OPTIMIZER_ADAGRAD, 0.03f),
-                new MLPConfigs(MLP.OPTIMIZER_ADAGRAD_RESET, 0.03f),
-                new MLPConfigs(MLP.OPTIMIZER_ADAGRAD, 0.07f),
-                new MLPConfigs(MLP.OPTIMIZER_ADAGRAD, 0.09f),
-                new MLPConfigs(MLP.OPTIMIZER_ADAGRAD_RESET, 0.09f),
-                new MLPConfigs(MLP.OPTIMIZER_ADAM_RESET, 0.01f),
-                new MLPConfigs(MLP.OPTIMIZER_ADAM, 0.01f)};
+//                new MLPConfigs(MLP.OPTIMIZER_RMSPROP, 0.01f),
+//                new MLPConfigs(MLP.OPTIMIZER_ADAGRAD, 0.03f),
+//                new MLPConfigs(MLP.OPTIMIZER_ADAGRAD_RESET, 0.03f),
+//                new MLPConfigs(MLP.OPTIMIZER_ADAGRAD, 0.07f),
+//                new MLPConfigs(MLP.OPTIMIZER_ADAGRAD, 0.09f),
+//                new MLPConfigs(MLP.OPTIMIZER_ADAGRAD_RESET, 0.09f),
+                new MLPConfigs(MLP.OPTIMIZER_ADAM, 0.01f),
+                new MLPConfigs(MLP.OPTIMIZER_ADAM, 0.03f),
+                new MLPConfigs(MLP.OPTIMIZER_ADAM_RESET, 0.03f),
+                new MLPConfigs(MLP.OPTIMIZER_ADAM, 0.07f),
+                new MLPConfigs(MLP.OPTIMIZER_ADAM, 0.09f),
+                new MLPConfigs(MLP.OPTIMIZER_ADAM_RESET, 0.09f),
+        };
+
 
         this.nn = new MLP[nnConfigs.length];
         for(int i=0; i < nnConfigs.length; i++){
