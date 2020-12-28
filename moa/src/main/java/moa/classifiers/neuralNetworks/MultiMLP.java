@@ -183,25 +183,24 @@ public class MultiMLP extends AbstractClassifier implements MultiClassClassifier
         class MLPConfigs{
             private final int optimizerType;
             private final float learningRate;
+
             MLPConfigs(int optimizerType, float learningRate){
                 this.optimizerType = optimizerType;
                 this.learningRate = learningRate;
             }
         }
-        MLPConfigs [] nnConfigs = new MLPConfigs[8];
-        nnConfigs[0] = new MLPConfigs(MLP.OPTIMIZER_SGD, 0.03f);
-        nnConfigs[1] = new MLPConfigs(MLP.OPTIMIZER_SGD, 0.05f);
-        nnConfigs[2] = new MLPConfigs(MLP.OPTIMIZER_SGD, 0.07f);
-        nnConfigs[3] = new MLPConfigs(MLP.OPTIMIZER_RMSPROP, 0.01f);
-        nnConfigs[4] = new MLPConfigs(MLP.OPTIMIZER_ADAGRAD, 0.03f);
-        nnConfigs[5] = new MLPConfigs(MLP.OPTIMIZER_ADAGRAD, 0.07f);
-        nnConfigs[6] = new MLPConfigs(MLP.OPTIMIZER_ADAGRAD, 0.09f);
-        nnConfigs[7] = new MLPConfigs(MLP.OPTIMIZER_ADAM, 0.01f);
-
-//            nnConfigs[0] = new MLPConfigs(MLP.OPTIMIZER_RMSPROP, 0.01f);
-//            nnConfigs[0] = new MLPConfigs(MLP.OPTIMIZER_ADAGRAD, 0.03f);
-//            nnConfigs[0] = new MLPConfigs(MLP.OPTIMIZER_ADAGRAD, 0.07f);
-//            nnConfigs[0] = new MLPConfigs(MLP.OPTIMIZER_ADAGRAD, 0.09f);
+        MLPConfigs [] nnConfigs = {
+                new MLPConfigs(MLP.OPTIMIZER_SGD, 0.03f),
+//                new MLPConfigs(MLP.OPTIMIZER_SGD, 0.05f),
+                new MLPConfigs(MLP.OPTIMIZER_SGD, 0.07f),
+                new MLPConfigs(MLP.OPTIMIZER_RMSPROP, 0.01f),
+                new MLPConfigs(MLP.OPTIMIZER_ADAGRAD, 0.03f),
+                new MLPConfigs(MLP.OPTIMIZER_ADAGRAD_RESET, 0.03f),
+                new MLPConfigs(MLP.OPTIMIZER_ADAGRAD, 0.07f),
+                new MLPConfigs(MLP.OPTIMIZER_ADAGRAD, 0.09f),
+                new MLPConfigs(MLP.OPTIMIZER_ADAGRAD_RESET, 0.09f),
+                new MLPConfigs(MLP.OPTIMIZER_ADAM_RESET, 0.01f),
+                new MLPConfigs(MLP.OPTIMIZER_ADAM, 0.01f)};
 
         this.nn = new MLP[nnConfigs.length];
         for(int i=0; i < nnConfigs.length; i++){
@@ -209,6 +208,7 @@ public class MultiMLP extends AbstractClassifier implements MultiClassClassifier
             this.nn[i].optimizerTypeOption.setChosenIndex(nnConfigs[i].optimizerType);
             this.nn[i].learningRateOption.setValue(nnConfigs[i].learningRate);
             this.nn[i].useOneHotEncode.setValue(useOneHotEncode.isSet());
+
             this.nn[i].initializeNetwork(instance);
         }
 
