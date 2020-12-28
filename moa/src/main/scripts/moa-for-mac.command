@@ -32,7 +32,8 @@ JAVA_AGENT_PATH="$(find $MAVEN_REPO -name 'sizeofag-1.0.4.jar')"
 JCMD=java
 if [ -f "$(/usr/libexec/java_home -v 1.8.0_271)/bin/java" ]
 then
-  JCMD="$(/usr/libexec/java_home -v 1.8.0_271)/bin/java"
+#    JCMD="$(/usr/libexec/java_home -v 1.8.0_271)/bin/java -XX:+UnlockCommercialFeatures -XX:+FlightRecorder -XX:StartFlightRecording=delay=0s,duration=60s,name=myrecording,filename=/Users/ng98/Desktop/recordings/myrecording.jfr,settings=profile"
+    JCMD="$(/usr/libexec/java_home -v 1.8.0_271)/bin/java"
 fi
 
 # check options
@@ -86,11 +87,8 @@ do
 done
 
 # launch class
-##/usr/libexec/java_home -v 1.8.0_271 --exec  java -XX:+UnlockCommercialFeatures -XX:+FlightRecorder -XX:StartFlightRecording=delay=1s,duration=60s,name=myrecording,filename=/Users/ng98/Desktop/recordings/myrecording.jfr,settings=profile \
-#/usr/libexec/java_home -v 1.8.0_271 --exec  java \
 "$JCMD" \
   -classpath "$CLASSPATH" \
   -Xmx8g -Xms50m -Xss1g \
   -javaagent:"$JAVA_AGENT_PATH" \
-  $MAIN \
-  $ARGS
+  $MAIN
