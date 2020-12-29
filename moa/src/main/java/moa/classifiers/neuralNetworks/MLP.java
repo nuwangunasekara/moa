@@ -136,9 +136,14 @@ public class MLP extends AbstractClassifier implements MultiClassClassifier, Reg
 //				System.out.println("Zero loss");
 				this.estimator.setInput(0.0);
 			}else{
-				collector.backward(lossValue);
+				try {
+					collector.backward(lossValue);
+					trainer.step(); // enforce the calculated weights
+				}catch (IllegalStateException e)
+				{
+//					trainer.step() throws above exception if all gradients are zero.
+				}
 				this.estimator.setInput(lossValue.getFloat());
-				trainer.step(); // enforce the calculated weights
 			}
 			//			print weights
 //			System.out.println(nnmodel.getBlock().getChildren().get("02Linear").getParameters().get("weight").getArray());
