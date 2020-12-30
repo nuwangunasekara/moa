@@ -53,13 +53,14 @@ echo "Full results log file = $log_file"
 
 rm -f $log_file
 
-dataset=(RBF_m spam_corpus LED_g LED_a nomao airlines AGR_a AGR_g WISDM_ar_v1.1_transformed elecNormNew covtypeNorm kdd99 RBF_f)
-#dataset=(WISDM_ar_v1.1_transformed elecNormNew)
+dataset=(spam_corpus WISDM_ar_v1.1_transformed elecNormNew nomao covtypeNorm kdd99 airlines RBF_f RBF_m LED_g LED_a AGR_a AGR_g)
+#dataset=(RBF_f)
 re_run_count=0
 task_failed=0
 
 for (( i=0; i<${#dataset[@]}; i++ ))
 do
+  sleep 60
   task_failed=0
   echo "Dataset = ${dataset[$i]}"
   in_file="${dataset_dir}/${dataset[$i]}.arff"

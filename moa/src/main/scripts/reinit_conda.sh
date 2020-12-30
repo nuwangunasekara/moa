@@ -4,7 +4,7 @@ conda_env_path=$1
 conda_yml_file=$2
 #scikit_multiflow_path=$3
 
-if [ $# -l 2 ]; then
+if [ $# -lt 2 ]; then
   echo "$#"
   echo "$0 <conda_env_path> <conda_yml_file>"
   exit 1
