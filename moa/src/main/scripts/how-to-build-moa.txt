@@ -1,4 +1,6 @@
 export JAVA_HOME=`/usr/libexec/java_home -v 1.8.0_271`
+export JAVA_HOME='/usr/lib/jvm/java-8-oracle'
+
 brew install maven
 mvn -v
 mvn clean install -DskipTests=true -Dmaven.javadoc.skip=true -Dlatex.skipBuild=true
