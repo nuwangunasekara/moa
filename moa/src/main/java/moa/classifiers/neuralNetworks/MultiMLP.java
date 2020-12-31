@@ -35,6 +35,9 @@ public class MultiMLP extends AbstractClassifier implements MultiClassClassifier
             new String[]{"Sequential", "UseThreads"},
             new String[]{"Sequential", "UseThreads"}, 1);
 
+    public FlagOption logStats = new FlagOption("logStats", 'l',
+            "Log Statistics");
+
     public static final int TRAIN_SEQUENTIAL = 0;
     public static final int TRAIN_USE_THREADS = 1;
 
@@ -214,6 +217,7 @@ public class MultiMLP extends AbstractClassifier implements MultiClassClassifier
             this.nn[i].optimizerTypeOption.setChosenIndex(nnConfigs[i].optimizerType);
             this.nn[i].learningRateOption.setValue(nnConfigs[i].learningRate);
             this.nn[i].useOneHotEncode.setValue(useOneHotEncode.isSet());
+            this.nn[i].logStats.setValue(logStats.isSet());
 
             this.nn[i].initializeNetwork(instance);
         }
