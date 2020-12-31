@@ -46,8 +46,6 @@ import ai.djl.training.loss.Loss;
 import ai.djl.training.tracker.Tracker;
 import ai.djl.training.optimizer.Optimizer;
 
-import java.io.FileWriter;
-import java.io.IOException;
 import java.text.DecimalFormat;
 
 
@@ -92,15 +90,14 @@ public class MLP extends AbstractClassifier implements MultiClassClassifier, Reg
 	public FlagOption useNormalization = new FlagOption("useNormalization", 'n',
 			"Normalize data");
 
-	public FlagOption logStats = new FlagOption("logStats", 'l',
-			"Log Statistics");
-
 	@Override
     public String getPurposeString() {
         return "NN: special.";
     }
 
-    public ADWIN estimator = new ADWIN();
+	public ADWIN estimator = new ADWIN();
+	public float accumulatedLoss = 0;
+	public int chosenCount = 0;
 
 
 	protected Model nnmodel = null;
@@ -110,9 +107,7 @@ public class MLP extends AbstractClassifier implements MultiClassClassifier, Reg
 	private transient NDManager testingNDManager;
 	private double [] votes;
 	private boolean resetOptimiser = false;
-	private float accumulatedLoss = 0;
-	private FileWriter statsDumpFile;
-	private static DecimalFormat decimalFormat = new DecimalFormat("0.00");
+	private static DecimalFormat decimalFormat = new DecimalFormat("0.000");
 
 
 	@Override
@@ -175,16 +170,6 @@ public class MLP extends AbstractClassifier implements MultiClassClassifier, Reg
 			System.err.println(e);
 			e.printStackTrace();
 			System.exit(1);
-		}
-		if (logStats.isSet() && (samplesSeen % 1000 == 0)){
-			try {
-//				statsDumpFile.write("id,optimizer_type_learning_rate,accumulated_loss,chosen_counts\n");
-				statsDumpFile.write(samplesSeen + "," + optimizerTypeOption.getChosenLabel() + "," + decimalFormat.format(learningRateOption.getValue()) + "," + accumulatedLoss + "\n");
-				statsDumpFile.flush();
-			}catch (IOException e) {
-				System.out.println("An error occurred.");
-				e.printStackTrace();
-			}
 		}
 	}
 
@@ -319,17 +304,6 @@ public class MLP extends AbstractClassifier implements MultiClassClassifier, Reg
 	public void initializeNetwork(Instance inst) {
 		if (nnmodel != null){
 			return;
-		}
-		if (logStats.isSet()) {
-			try {
-				statsDumpFile = new FileWriter(optimizerTypeOption.getChosenLabel() + decimalFormat.format(learningRateOption.getValue()) + ".csv");
-				statsDumpFile.write("id,optimizer_type_learning_rate,accumulated_loss,chosen_counts\n");
-				statsDumpFile.write(samplesSeen + "," + optimizerTypeOption.getChosenLabel() + "," + decimalFormat.format(learningRateOption.getValue()) + "," + accumulatedLoss + "\n");
-				statsDumpFile.flush();
-			} catch (IOException e) {
-				System.out.println("An error occurred.");
-				e.printStackTrace();
-			}
 		}
 
 		votes = new double [inst.numClasses()];
