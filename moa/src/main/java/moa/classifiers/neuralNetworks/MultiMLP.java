@@ -10,6 +10,9 @@ import moa.classifiers.AbstractClassifier;
 import moa.classifiers.MultiClassClassifier;
 import moa.core.Measurement;
 
+import java.io.FileWriter;
+import java.io.IOException;
+import java.text.DecimalFormat;
 import java.util.concurrent.*;
 
 
@@ -23,6 +26,8 @@ public class MultiMLP extends AbstractClassifier implements MultiClassClassifier
     private float[] featureValues = null;
     private double [] class_value = null;
     private ExecutorService exService = null;
+    private FileWriter statsDumpFile;
+    private static DecimalFormat decimalFormat = new DecimalFormat("0.00000");
 
     public FlagOption useOneHotEncode = new FlagOption("useOneHotEncode", 'h',
             "use one hot encoding");
@@ -136,6 +141,21 @@ public class MultiMLP extends AbstractClassifier implements MultiClassClassifier
         }
     }
 
+    private void printStats(){
+        if (logStats.isSet() && (samplesSeen % 10000 == 0)){
+            for (int i = 0 ; i < this.nn.length ; i++) {
+                try {
+//				statsDumpFile.write("id,optimizer_type_learning_rate,accumulated_loss,chosen_counts\n");
+                    statsDumpFile.write(samplesSeen + "," + this.nn[i].optimizerTypeOption.getChosenLabel() + decimalFormat.format(this.nn[i].learningRateOption.getValue()) + "," + this.nn[i].accumulatedLoss + "," + this.nn[i].chosenCount + "\n");
+                    statsDumpFile.flush();
+                } catch (IOException e) {
+                    System.out.println("An error occurred.");
+                    e.printStackTrace();
+                }
+            }
+        }
+    }
+
     @Override
     public double[] getVotesForInstance(Instance instance) {
         int min_index = 0;
@@ -143,15 +163,17 @@ public class MultiMLP extends AbstractClassifier implements MultiClassClassifier
         if(this.nn == null) {
             initNNs(instance);
         }else {
-            double min_estimation = Double.MIN_VALUE;
+            double min_estimation = Double.MAX_VALUE;
             for (int i = 0 ; i < this.nn.length ; i++) {
                 if (this.nn[i].estimator.getEstimation() < min_estimation){
+                    min_estimation = this.nn[i].estimator.getEstimation();
                     min_index = i;
                 }
             }
         }
-
+        printStats();
         MLP.setFeatureValuesArray(instance, featureValues, useOneHotEncode.isSet(), true, normalizeInfo, samplesSeen);
+        this.nn[min_index].chosenCount++;
         return this.nn[min_index].getVotesForFeatureValues(instance, featureValues);
     }
 
@@ -202,12 +224,14 @@ public class MultiMLP extends AbstractClassifier implements MultiClassClassifier
 //                new MLPConfigs(MLP.OPTIMIZER_ADAGRAD, 0.07f),
 //                new MLPConfigs(MLP.OPTIMIZER_ADAGRAD, 0.09f),
 //                new MLPConfigs(MLP.OPTIMIZER_ADAGRAD_RESET, 0.09f),
-                new MLPConfigs(MLP.OPTIMIZER_ADAM, 0.01f),
+                new MLPConfigs(MLP.OPTIMIZER_ADAM, 0.0005f),
+                new MLPConfigs(MLP.OPTIMIZER_ADAM_RESET, 0.0005f),
+                new MLPConfigs(MLP.OPTIMIZER_ADAM, 0.001f),
+                new MLPConfigs(MLP.OPTIMIZER_ADAM_RESET, 0.001f),
+                new MLPConfigs(MLP.OPTIMIZER_ADAM, 0.005f),
+                new MLPConfigs(MLP.OPTIMIZER_ADAM_RESET, 0.005f),
                 new MLPConfigs(MLP.OPTIMIZER_ADAM, 0.03f),
                 new MLPConfigs(MLP.OPTIMIZER_ADAM_RESET, 0.03f),
-                new MLPConfigs(MLP.OPTIMIZER_ADAM, 0.07f),
-                new MLPConfigs(MLP.OPTIMIZER_ADAM, 0.09f),
-                new MLPConfigs(MLP.OPTIMIZER_ADAM_RESET, 0.09f),
         };
 
 
@@ -217,9 +241,19 @@ public class MultiMLP extends AbstractClassifier implements MultiClassClassifier
             this.nn[i].optimizerTypeOption.setChosenIndex(nnConfigs[i].optimizerType);
             this.nn[i].learningRateOption.setValue(nnConfigs[i].learningRate);
             this.nn[i].useOneHotEncode.setValue(useOneHotEncode.isSet());
-            this.nn[i].logStats.setValue(logStats.isSet());
 
             this.nn[i].initializeNetwork(instance);
+        }
+
+        if (logStats.isSet()) {
+            try {
+                statsDumpFile = new FileWriter("NN_loss.csv");
+                statsDumpFile.write("id,optimizer_type_learning_rate,accumulated_loss,chosen_counts\n");
+                statsDumpFile.flush();
+            } catch (IOException e) {
+                System.out.println("An error occurred.");
+                e.printStackTrace();
+            }
         }
 
         exService = Executors.newFixedThreadPool(nnConfigs.length);
