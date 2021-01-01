@@ -104,6 +104,11 @@ do
     kill $PID
   fi
 
+  if [ -f "NN_loss.csv" ]
+  then
+    mv NN_loss.csv ${dataset[$i]}_NN_loss.csv
+  fi
+
   cat $tmp_log_file >> $log_file
 
   if [ $task_failed -eq 0 ]; then
