@@ -35,6 +35,8 @@ then
   JCMD="$JAVA_HOME/bin/java"
 fi
 
+$JCMD -version
+
 # check options
 MEMORY=512m
 MAIN=moa.gui.GUI
