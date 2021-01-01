@@ -107,7 +107,7 @@ public class MLP extends AbstractClassifier implements MultiClassClassifier, Reg
 	private transient NDManager testingNDManager;
 	private double [] votes;
 	private boolean resetOptimiser = false;
-	private static DecimalFormat decimalFormat = new DecimalFormat("0.000");
+	private static DecimalFormat decimalFormat = new DecimalFormat("0.00000");
 
 
 	@Override
