@@ -104,8 +104,7 @@ do
     kill $PID
   fi
 
-  if [ -f "NN_loss.csv" ]
-  then
+  if [ -f NN_loss.csv ]; then
     mv NN_loss.csv ${dataset[$i]}_NN_loss.csv
   fi
 
