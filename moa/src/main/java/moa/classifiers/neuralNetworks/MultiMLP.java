@@ -1,6 +1,7 @@
 package moa.classifiers.neuralNetworks;
 
 import com.github.javacliparser.FlagOption;
+import com.github.javacliparser.IntOption;
 import com.github.javacliparser.MultiChoiceOption;
 import com.yahoo.labs.samoa.instances.Instance;
 import moa.capabilities.CapabilitiesHandler;
@@ -13,6 +14,9 @@ import moa.core.Measurement;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.text.DecimalFormat;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 import java.util.concurrent.*;
 
 
@@ -42,6 +46,12 @@ public class MultiMLP extends AbstractClassifier implements MultiClassClassifier
 
     public FlagOption logStats = new FlagOption("logStats", 'l',
             "Log Statistics");
+
+    public IntOption numberOfNeuronsIn2Power = new IntOption(
+            "numberOfNeuronsIn2Power",
+            'N',
+            "Number of neurons in the 1st layer in 2's power",
+            10, 4, 10);
 
     public static final int TRAIN_SEQUENTIAL = 0;
     public static final int TRAIN_USE_THREADS = 1;
@@ -232,7 +242,17 @@ public class MultiMLP extends AbstractClassifier implements MultiClassClassifier
                 new MLPConfigs(MLP.OPTIMIZER_ADAM_RESET, 0.005f),
                 new MLPConfigs(MLP.OPTIMIZER_ADAM, 0.03f),
                 new MLPConfigs(MLP.OPTIMIZER_ADAM_RESET, 0.03f),
+
         };
+
+        if (numberOfNeuronsIn2Power.getValue() <= 8) {
+            List<MLPConfigs> nnConfigsArrayList = new ArrayList<MLPConfigs>(Arrays.asList(nnConfigs));
+            nnConfigsArrayList.add(new MLPConfigs(MLP.OPTIMIZER_SGD, 0.0005f));
+            nnConfigsArrayList.add(new MLPConfigs(MLP.OPTIMIZER_SGD, 0.001f));
+            nnConfigsArrayList.add(new MLPConfigs(MLP.OPTIMIZER_ADAM, 0.07f));
+            nnConfigsArrayList.add(new MLPConfigs(MLP.OPTIMIZER_ADAM_RESET, 0.07f));
+            nnConfigs = nnConfigsArrayList.toArray(nnConfigs);
+        }
 
 
         this.nn = new MLP[nnConfigs.length];
@@ -241,6 +261,7 @@ public class MultiMLP extends AbstractClassifier implements MultiClassClassifier
             this.nn[i].optimizerTypeOption.setChosenIndex(nnConfigs[i].optimizerType);
             this.nn[i].learningRateOption.setValue(nnConfigs[i].learningRate);
             this.nn[i].useOneHotEncode.setValue(useOneHotEncode.isSet());
+            this.nn[i].numberOfNeuronsIn2Power.setValue(numberOfNeuronsIn2Power.getValue());
 
             this.nn[i].initializeNetwork(instance);
         }

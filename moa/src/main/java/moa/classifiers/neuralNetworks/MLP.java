@@ -19,11 +19,11 @@ package moa.classifiers.neuralNetworks;
 
 import ai.djl.engine.Engine;
 import com.github.javacliparser.FlagOption;
+import com.github.javacliparser.IntOption;
 import moa.capabilities.Capability;
 import moa.capabilities.ImmutableCapabilities;
 import moa.classifiers.AbstractClassifier;
 import moa.classifiers.MultiClassClassifier;
-import moa.classifiers.Regressor;
 import moa.classifiers.core.driftdetection.ADWIN;
 import moa.core.Measurement;
 import com.yahoo.labs.samoa.instances.Instance;
@@ -47,9 +47,10 @@ import ai.djl.training.tracker.Tracker;
 import ai.djl.training.optimizer.Optimizer;
 
 import java.text.DecimalFormat;
+import java.lang.Math;
 
 
-public class MLP extends AbstractClassifier implements MultiClassClassifier, Regressor {
+public class MLP extends AbstractClassifier implements MultiClassClassifier {
 
     private static final long serialVersionUID = 1L;
 
@@ -89,6 +90,12 @@ public class MLP extends AbstractClassifier implements MultiClassClassifier, Reg
 
 	public FlagOption useNormalization = new FlagOption("useNormalization", 'n',
 			"Normalize data");
+
+	public IntOption numberOfNeuronsIn2Power = new IntOption(
+			"numberOfNeuronsIn2Power",
+			'N',
+			"Number of neurons in the 1st layer in 2's power",
+			10, 4, 10);
 
 	@Override
     public String getPurposeString() {
@@ -321,7 +328,7 @@ public class MLP extends AbstractClassifier implements MultiClassClassifier, Reg
 		try {
 			nnmodel = Model.newInstance("mlp", Device.cpu());
 			// Construct neural network and set it in the block
-			Block block = new Mlp(featureValuesArraySize, inst.numClasses(), new int[] {1024});
+			Block block = new Mlp(featureValuesArraySize, inst.numClasses(), new int[] {(int) Math.pow(2, numberOfNeuronsIn2Power.getValue())});
 //		Block block = new Mlp(featureValuesArraySize, inst.numClasses(), new int[] {2});
 			nnmodel.setBlock(block);
 
