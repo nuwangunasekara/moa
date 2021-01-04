@@ -19,5 +19,6 @@ else
 fi
 
 p_pattern='{printf "%30s, %40s, %40s, %40s, %40s\n", $1,$2,$5,$6,$8}'
-find  $RESULTS_DIR -iname "$s_pattern" | grep -v "$exclude_s_pattern" | sed 's/ /\\ /g'  | head -n 1 |xargs head -n 1 |awk -F ',' "$p_pattern"
+
+find  $RESULTS_DIR -iname "$s_pattern" | grep -v "$exclude_s_pattern" | sed 's/ /\\ /g'  | xargs ls -t | tail -n 1 |xargs head -n 1 |awk -F ',' "$p_pattern"
 find  $RESULTS_DIR -iname "$s_pattern" | grep -v "$exclude_s_pattern" | sed 's/ /\\ /g'  | xargs awk '{print $0}' |grep  'Learner' -v |sed "s#ArffFileStream -f ##g" |sed "s#${DATASET_DIR}##g" |sed "s#/\/#\\\#g" |sed 's/.arff//g' | awk -F ',' "$p_pattern"
