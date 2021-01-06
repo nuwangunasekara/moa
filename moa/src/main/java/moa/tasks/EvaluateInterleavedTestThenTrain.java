@@ -140,7 +140,12 @@ public class EvaluateInterleavedTestThenTrain extends ClassificationMainTask {
             }
         }
         boolean firstDump = true;
+        float timeTaken = 0;
+
         boolean preciseCPUTiming = TimingUtils.enablePreciseTiming();
+
+        // Clock Time Start
+        long t1 = System.currentTimeMillis();
         long evaluateStartTime = TimingUtils.getNanoCPUTimeOfCurrentThread();
         long lastEvaluateStartTime = evaluateStartTime;
         double RAMHours = 0.0;
@@ -159,6 +164,10 @@ public class EvaluateInterleavedTestThenTrain extends ClassificationMainTask {
             instancesProcessed++;
             if (instancesProcessed % this.sampleFrequencyOption.getValue() == 0
                   ||  stream.hasMoreInstances() == false) {
+
+                long t2 = System.currentTimeMillis();
+                //Clock Time End
+                timeTaken = (t2 - t1) / 1000F;
                 long evaluateTime = TimingUtils.getNanoCPUTimeOfCurrentThread();
                 double time = TimingUtils.nanoTimeToSeconds(evaluateTime - evaluateStartTime);
                 double timeIncrement = TimingUtils.nanoTimeToSeconds(evaluateTime - lastEvaluateStartTime);
@@ -176,6 +185,9 @@ public class EvaluateInterleavedTestThenTrain extends ClassificationMainTask {
                             + (preciseCPUTiming ? "cpu "
                             : "") + "seconds)",
                             time),
+                            new Measurement(
+                                    "Wall Time (Actual Time)"
+                                    , timeTaken),
                             new Measurement(
                             "model cost (RAM-Hours)",
                             RAMHours)
