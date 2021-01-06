@@ -16,6 +16,7 @@ import java.io.IOException;
 import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Comparator;
 import java.util.List;
 import java.util.concurrent.*;
 
@@ -44,14 +45,6 @@ public class MultiMLP extends AbstractClassifier implements MultiClassClassifier
             new String[]{"Sequential", "UseThreads"},
             new String[]{"Sequential", "UseThreads"}, 1);
 
-    public FlagOption logStats = new FlagOption("logStats", 'l',
-            "Log Statistics");
-
-    public IntOption numberOfNeuronsIn2Power = new IntOption(
-            "numberOfNeuronsIn2Power",
-            'N',
-            "Number of neurons in the 1st layer in 2's power",
-            10, 4, 10);
 
     public static final int TRAIN_SEQUENTIAL = 0;
     public static final int TRAIN_USE_THREADS = 1;
@@ -91,12 +84,12 @@ public class MultiMLP extends AbstractClassifier implements MultiClassClassifier
                 break;
             case TRAIN_USE_THREADS:
                 class TrainThread implements Callable<Boolean> {
-                    private final MLP nn;
+                    private final MLP mlp;
                     private final float[] featureValues;
                     private final double [] class_value;
 
-                    public TrainThread(MLP nn, float[] featureValues, double [] class_value){
-                        this.nn = nn;
+                    public TrainThread(MLP mlp, float[] featureValues, double [] class_value){
+                        this.mlp = mlp;
                         this.featureValues = featureValues;
                         this.class_value = class_value;
                     }
@@ -104,7 +97,7 @@ public class MultiMLP extends AbstractClassifier implements MultiClassClassifier
                     @Override
                     public Boolean call() {
                         try {
-                            this.nn.trainOnFeatureValues(this.featureValues, this.class_value);
+                            this.mlp.trainOnFeatureValues(this.featureValues, this.class_value);
 //                        System.out.println(Thread.currentThread().getName());
                         } catch (NullPointerException e){
 //                            System.err.println("Error: Model failed during training.");
@@ -114,16 +107,30 @@ public class MultiMLP extends AbstractClassifier implements MultiClassClassifier
                         return Boolean.TRUE;
                     }
                 }
-//                TrainThread[] trainThreadArray = new TrainThread[this.nn.length];
-                final Future<Boolean> [] runFuture = new Future[this.nn.length];
-                for (int i =0; i < this.nn.length; i++) {
-//                    trainThreadArray[i] = new TrainThread(this.nn[i], this.featureValues, this.class_value);
+
+//                start threads
+                int numberOfMLPsToTrain = 4;
+                if ((samplesSeen < 500) || (samplesSeen % 10 == 0)){
+                    numberOfMLPsToTrain = this.nn.length;
+                }else{
+                    Arrays.sort(this.nn, new Comparator<MLP>() {
+                        @Override
+                        public int compare(MLP o1, MLP o2) {
+                            return Double.compare(o1.estimator.getEstimation(), o2.estimator.getEstimation());
+                        }
+                    });
+                }
+
+                final Future<Boolean> [] runFuture = new Future[numberOfMLPsToTrain];
+                for (int i =0; i < numberOfMLPsToTrain; i++) {
                     runFuture[i] = exService.submit(new TrainThread(this.nn[i], this.featureValues, this.class_value));
                 }
-                int runningCount = this.nn.length;
+
+//                wait for threads to complete
+                int runningCount = numberOfMLPsToTrain;
                 while (runningCount != 0){
                     runningCount = 0;
-                    for (int i =0; i < this.nn.length; i++) {
+                    for (int i =0; i < numberOfMLPsToTrain; i++) {
                         try {
                             final Boolean returnedValue = runFuture[i].get();
                             if (!returnedValue.equals(Boolean.TRUE)){
@@ -134,34 +141,19 @@ public class MultiMLP extends AbstractClassifier implements MultiClassClassifier
                         }
                     }
                 }
-//                for (int i =0; i < trainThreadArray.length; i++) {
-//                    trainThreadArray[i].start();
-//                }
 
-//                for (int i =0; i < trainThreadArray.length; i++) {
-//                    try {
-//                        trainThreadArray[i].join();
-////                        trainThreadArray[i].
-//                    }catch(Exception e) {
-//                        System.err.println("Error: Model "+ i +" failed during training.");
-//                        e.printStackTrace();
-//                    }
-//                }
                 break;
         }
     }
 
     private void printStats(){
-        if (logStats.isSet() && (samplesSeen % 10000 == 0)){
-            for (int i = 0 ; i < this.nn.length ; i++) {
-                try {
-//				statsDumpFile.write("id,optimizer_type_learning_rate,accumulated_loss,chosen_counts\n");
-                    statsDumpFile.write(samplesSeen + "," + this.nn[i].optimizerTypeOption.getChosenLabel() + decimalFormat.format(this.nn[i].learningRateOption.getValue()) + "," + this.nn[i].accumulatedLoss + "," + this.nn[i].chosenCount + "\n");
-                    statsDumpFile.flush();
-                } catch (IOException e) {
-                    System.out.println("An error occurred.");
-                    e.printStackTrace();
-                }
+        for (int i = 0 ; i < this.nn.length ; i++) {
+            try {
+                statsDumpFile.write(samplesSeen + "," + this.nn[i].numberOfNeuronsIn2Power.getValue() + this.nn[i].optimizerTypeOption.getChosenLabel() + decimalFormat.format(this.nn[i].learningRateOption.getValue()) + "," + this.nn[i].estimator.getEstimation() + "," + this.nn[i].chosenCount + "\n");
+                statsDumpFile.flush();
+            } catch (IOException e) {
+                System.out.println("An error occurred.");
+                e.printStackTrace();
             }
         }
     }
@@ -181,7 +173,6 @@ public class MultiMLP extends AbstractClassifier implements MultiClassClassifier
                 }
             }
         }
-        printStats();
         MLP.setFeatureValuesArray(instance, featureValues, useOneHotEncode.isSet(), true, normalizeInfo, samplesSeen);
         this.nn[min_index].chosenCount++;
         return this.nn[min_index].getVotesForFeatureValues(instance, featureValues);
@@ -198,6 +189,7 @@ public class MultiMLP extends AbstractClassifier implements MultiClassClassifier
 
     @Override
     protected Measurement[] getModelMeasurementsImpl() {
+        printStats();
         return null;
     }
 
@@ -216,43 +208,45 @@ public class MultiMLP extends AbstractClassifier implements MultiClassClassifier
 //	{'optimizer_type': OP_TYPE_ADAM_NC, 'l_rate': 0.01},
 //			]
         class MLPConfigs{
+            private final int numberOfNeuronsIn2Power;
             private final int optimizerType;
             private final float learningRate;
 
-            MLPConfigs(int optimizerType, float learningRate){
+            MLPConfigs(int numberOfNeuronsIn2Power, int optimizerType, float learningRate){
+                this.numberOfNeuronsIn2Power = numberOfNeuronsIn2Power;
                 this.optimizerType = optimizerType;
                 this.learningRate = learningRate;
             }
         }
         MLPConfigs [] nnConfigs = {
-                new MLPConfigs(MLP.OPTIMIZER_SGD, 0.03f),
+                new MLPConfigs(8, MLP.OPTIMIZER_SGD, 0.03f),
 //                new MLPConfigs(MLP.OPTIMIZER_SGD, 0.05f),
-                new MLPConfigs(MLP.OPTIMIZER_SGD, 0.07f),
+                new MLPConfigs(8, MLP.OPTIMIZER_SGD, 0.07f),
 //                new MLPConfigs(MLP.OPTIMIZER_RMSPROP, 0.01f),
 //                new MLPConfigs(MLP.OPTIMIZER_ADAGRAD, 0.03f),
 //                new MLPConfigs(MLP.OPTIMIZER_ADAGRAD_RESET, 0.03f),
 //                new MLPConfigs(MLP.OPTIMIZER_ADAGRAD, 0.07f),
 //                new MLPConfigs(MLP.OPTIMIZER_ADAGRAD, 0.09f),
 //                new MLPConfigs(MLP.OPTIMIZER_ADAGRAD_RESET, 0.09f),
-                new MLPConfigs(MLP.OPTIMIZER_ADAM, 0.0005f),
-                new MLPConfigs(MLP.OPTIMIZER_ADAM_RESET, 0.0005f),
-                new MLPConfigs(MLP.OPTIMIZER_ADAM, 0.001f),
-                new MLPConfigs(MLP.OPTIMIZER_ADAM_RESET, 0.001f),
-                new MLPConfigs(MLP.OPTIMIZER_ADAM, 0.005f),
-                new MLPConfigs(MLP.OPTIMIZER_ADAM_RESET, 0.005f),
-                new MLPConfigs(MLP.OPTIMIZER_ADAM, 0.03f),
-                new MLPConfigs(MLP.OPTIMIZER_ADAM_RESET, 0.03f),
+                new MLPConfigs(10, MLP.OPTIMIZER_ADAM, 0.0005f),
+                new MLPConfigs(10, MLP.OPTIMIZER_ADAM_RESET, 0.0005f),
+                new MLPConfigs(10, MLP.OPTIMIZER_ADAM, 0.001f),
+                new MLPConfigs(10, MLP.OPTIMIZER_ADAM_RESET, 0.001f),
+                new MLPConfigs(10, MLP.OPTIMIZER_ADAM, 0.005f),
+                new MLPConfigs(10, MLP.OPTIMIZER_ADAM_RESET, 0.005f),
+                new MLPConfigs(8, MLP.OPTIMIZER_ADAM, 0.03f),
+                new MLPConfigs(8, MLP.OPTIMIZER_ADAM_RESET, 0.03f),
 
         };
 
-        if (numberOfNeuronsIn2Power.getValue() <= 8) {
+//        if (numberOfNeuronsIn2Power.getValue() <= 8) {
             List<MLPConfigs> nnConfigsArrayList = new ArrayList<MLPConfigs>(Arrays.asList(nnConfigs));
-            nnConfigsArrayList.add(new MLPConfigs(MLP.OPTIMIZER_SGD, 0.0005f));
-            nnConfigsArrayList.add(new MLPConfigs(MLP.OPTIMIZER_SGD, 0.001f));
-            nnConfigsArrayList.add(new MLPConfigs(MLP.OPTIMIZER_ADAM, 0.07f));
-            nnConfigsArrayList.add(new MLPConfigs(MLP.OPTIMIZER_ADAM_RESET, 0.07f));
+            nnConfigsArrayList.add(new MLPConfigs(8, MLP.OPTIMIZER_SGD, 0.0005f));
+            nnConfigsArrayList.add(new MLPConfigs(8, MLP.OPTIMIZER_SGD, 0.001f));
+            nnConfigsArrayList.add(new MLPConfigs(8, MLP.OPTIMIZER_ADAM, 0.07f));
+            nnConfigsArrayList.add(new MLPConfigs(8, MLP.OPTIMIZER_ADAM_RESET, 0.07f));
             nnConfigs = nnConfigsArrayList.toArray(nnConfigs);
-        }
+//        }
 
 
         this.nn = new MLP[nnConfigs.length];
@@ -261,26 +255,25 @@ public class MultiMLP extends AbstractClassifier implements MultiClassClassifier
             this.nn[i].optimizerTypeOption.setChosenIndex(nnConfigs[i].optimizerType);
             this.nn[i].learningRateOption.setValue(nnConfigs[i].learningRate);
             this.nn[i].useOneHotEncode.setValue(useOneHotEncode.isSet());
-            this.nn[i].numberOfNeuronsIn2Power.setValue(numberOfNeuronsIn2Power.getValue());
+            this.nn[i].numberOfNeuronsIn2Power.setValue(nnConfigs[i].numberOfNeuronsIn2Power);
 
             this.nn[i].initializeNetwork(instance);
         }
 
-        if (logStats.isSet()) {
-            try {
-                statsDumpFile = new FileWriter("NN_loss.csv");
-                statsDumpFile.write("id,optimizer_type_learning_rate,accumulated_loss,chosen_counts\n");
-                statsDumpFile.flush();
-            } catch (IOException e) {
-                System.out.println("An error occurred.");
-                e.printStackTrace();
-            }
+        try {
+            statsDumpFile = new FileWriter("NN_loss.csv");
+            statsDumpFile.write("id,optimizer_type_learning_rate,estimated_loss,chosen_counts\n");
+            statsDumpFile.flush();
+        } catch (IOException e) {
+            System.out.println("An error occurred.");
+            e.printStackTrace();
         }
 
         exService = Executors.newFixedThreadPool(nnConfigs.length);
 
         class_value = new double[1];
         featureValuesArraySize = MLP.getFeatureValuesArraySize(instance, useOneHotEncode.isSet());
+        System.out.println("Number of features before one-hot encode: " + instance.numInputAttributes() + " : Number of features after one-hot encode: " + featureValuesArraySize);
         featureValues = new float [featureValuesArraySize];
         if (useNormalization.isSet()) {
             normalizeInfo = new MLP.NormalizeInfo[featureValuesArraySize];
