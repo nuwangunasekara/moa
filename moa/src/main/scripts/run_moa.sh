@@ -74,9 +74,9 @@ do
   rm -f tmp_log_file
 
   exp_cmd="moa.DoTask \"EvaluateInterleavedTestThenTrain -l ($learner) -s (ArffFileStream -f $in_file) -i 10000000 -f 10000000 -q 10000000 -d $out_file\" &>$tmp_log_file &"
-  echo "\n$exp_cmd\n"
-  echo "\n$exp_cmd\n" > $tmp_log_file
-"$JCMD" \
+  echo -e "\n$exp_cmd\n"
+  echo -e "\n$exp_cmd\n" > $tmp_log_file
+time "$JCMD" \
   -classpath "$CLASSPATH" \
   -Xmx16g -Xms50m -Xss1g \
   -javaagent:"$JAVA_AGENT_PATH" \
