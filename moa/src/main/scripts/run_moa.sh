@@ -43,7 +43,7 @@ case $(uname)  in
 esac
 
 # learner='meta.StreamingRandomPatches -s 10'
-learner='neuralNetworks.MultiMLP -h -n -t UseThreads -l'
+learner='neuralNetworks.MultiMLP -h -n -t UseThreads'
 # learner='lazy.kNN'
 
 log_file="${out_csv_dir}/full.log"
