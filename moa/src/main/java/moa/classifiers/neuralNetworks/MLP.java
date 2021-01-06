@@ -97,6 +97,8 @@ public class MLP extends AbstractClassifier implements MultiClassClassifier {
 			"Number of neurons in the 1st layer in 2's power",
 			10, 4, 10);
 
+	public long optimizerResetCount = 0;
+
 	@Override
     public String getPurposeString() {
         return "NN: special.";
@@ -163,7 +165,8 @@ public class MLP extends AbstractClassifier implements MultiClassClassifier {
 //			System.out.println(nnmodel.getBlock().getChildren().get("02Linear").getParameters().get("weight").getArray());
 
 			if (resetOptimiser && estimator.getChange() && (previousLossEstimation < estimator.getEstimation()) ){
-				System.out.println("Resetting optimizer:" + optimizerTypeOption.getChosenLabel() + " learning rate: " + decimalFormat.format(learningRateOption.getValue()));
+//				System.out.println("Resetting optimizer:" + optimizerTypeOption.getChosenLabel() + " learning rate: " + decimalFormat.format(learningRateOption.getValue()));
+				optimizerResetCount++;
 				setTrainer();
 			}
 
