@@ -77,7 +77,7 @@ public class MLP extends AbstractClassifier implements MultiClassClassifier {
 			"learningRate",
 			'r',
 			"Learning Rate",
-			0.03, 0.00001, 1.0);
+			0.03, 0.0000001, 1.0);
 
 	public MultiChoiceOption optimizerTypeOption = new MultiChoiceOption("optimizer", 'o',
 			"Choose optimizer",
