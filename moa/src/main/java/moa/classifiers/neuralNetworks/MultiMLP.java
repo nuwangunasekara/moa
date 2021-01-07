@@ -10,6 +10,7 @@ import moa.capabilities.ImmutableCapabilities;
 import moa.classifiers.AbstractClassifier;
 import moa.classifiers.MultiClassClassifier;
 import moa.core.Measurement;
+//import moa.evaluation.BasicClassificationPerformanceEvaluator;
 
 import java.io.FileWriter;
 import java.io.IOException;
@@ -32,6 +33,7 @@ public class MultiMLP extends AbstractClassifier implements MultiClassClassifier
     private double [] class_value = null;
     private ExecutorService exService = null;
     private FileWriter statsDumpFile;
+//    private BasicClassificationPerformanceEvaluator evaluator = new BasicClassificationPerformanceEvaluator();
     private static DecimalFormat decimalFormat = new DecimalFormat("0.00000");
 
     public FlagOption useOneHotEncode = new FlagOption("useOneHotEncode", 'h',
@@ -109,10 +111,17 @@ public class MultiMLP extends AbstractClassifier implements MultiClassClassifier
                 }
 
 //                start threads
-                int numberOfMLPsToTrain = 4;
-                if ((samplesSeen < 500) || (samplesSeen % 10 == 0)){
+                int numberOfMLPsToTrain = 3; // min value should be 2
+                int indexOfTheLastNetworkToTrain = (int)(samplesSeen % this.nn.length);
+                if (samplesSeen < 500){
                     numberOfMLPsToTrain = this.nn.length;
+                    indexOfTheLastNetworkToTrain = this.nn.length - 1;
                 }else{
+                    if (indexOfTheLastNetworkToTrain < numberOfMLPsToTrain){
+//                        We train NN s up till numberOfMLPsToTrain - 2 any how.
+                        indexOfTheLastNetworkToTrain = numberOfMLPsToTrain + indexOfTheLastNetworkToTrain; // need to make sure that the array doesn't overflow
+                    }
+
                     Arrays.sort(this.nn, new Comparator<MLP>() {
                         @Override
                         public int compare(MLP o1, MLP o2) {
@@ -123,7 +132,12 @@ public class MultiMLP extends AbstractClassifier implements MultiClassClassifier
 
                 final Future<Boolean> [] runFuture = new Future[numberOfMLPsToTrain];
                 for (int i =0; i < numberOfMLPsToTrain; i++) {
-                    runFuture[i] = exService.submit(new TrainThread(this.nn[i], this.featureValues, this.class_value));
+                    if (i <= numberOfMLPsToTrain - 2){
+                        runFuture[i] = exService.submit(new TrainThread(this.nn[i], this.featureValues, this.class_value));
+                    }else {
+                        // i == numberOfMLPsToTrain - 1
+                        runFuture[i] = exService.submit(new TrainThread(this.nn[indexOfTheLastNetworkToTrain], this.featureValues, this.class_value));
+                    }
                 }
 
 //                wait for threads to complete
@@ -149,7 +163,7 @@ public class MultiMLP extends AbstractClassifier implements MultiClassClassifier
     private void printStats(){
         for (int i = 0 ; i < this.nn.length ; i++) {
             try {
-                statsDumpFile.write(samplesSeen + "," + this.nn[i].numberOfNeuronsIn2Power.getValue() + this.nn[i].optimizerTypeOption.getChosenLabel() + decimalFormat.format(this.nn[i].learningRateOption.getValue()) + "," + this.nn[i].estimator.getEstimation() + "," + this.nn[i].chosenCount + "\n");
+                statsDumpFile.write(this.nn[i].samplesSeen + "," + this.nn[i].numberOfNeuronsIn2Power.getValue() + this.nn[i].optimizerTypeOption.getChosenLabel() + decimalFormat.format(this.nn[i].learningRateOption.getValue()) + "," + this.nn[i].estimator.getEstimation() + "," + this.nn[i].chosenCount + "\n");
                 statsDumpFile.flush();
             } catch (IOException e) {
                 System.out.println("An error occurred.");
@@ -175,6 +189,7 @@ public class MultiMLP extends AbstractClassifier implements MultiClassClassifier
         }
         MLP.setFeatureValuesArray(instance, featureValues, useOneHotEncode.isSet(), true, normalizeInfo, samplesSeen);
         this.nn[min_index].chosenCount++;
+//        this.ensemble[i].evaluator.addResult(example, vote.getArrayRef());
         return this.nn[min_index].getVotesForFeatureValues(instance, featureValues);
     }
 
@@ -218,36 +233,43 @@ public class MultiMLP extends AbstractClassifier implements MultiClassClassifier
                 this.learningRate = learningRate;
             }
         }
-        MLPConfigs [] nnConfigs = {
-                new MLPConfigs(8, MLP.OPTIMIZER_SGD, 0.03f),
-//                new MLPConfigs(MLP.OPTIMIZER_SGD, 0.05f),
-                new MLPConfigs(8, MLP.OPTIMIZER_SGD, 0.07f),
-//                new MLPConfigs(MLP.OPTIMIZER_RMSPROP, 0.01f),
-//                new MLPConfigs(MLP.OPTIMIZER_ADAGRAD, 0.03f),
-//                new MLPConfigs(MLP.OPTIMIZER_ADAGRAD_RESET, 0.03f),
-//                new MLPConfigs(MLP.OPTIMIZER_ADAGRAD, 0.07f),
-//                new MLPConfigs(MLP.OPTIMIZER_ADAGRAD, 0.09f),
-//                new MLPConfigs(MLP.OPTIMIZER_ADAGRAD_RESET, 0.09f),
-                new MLPConfigs(10, MLP.OPTIMIZER_ADAM, 0.0005f),
-                new MLPConfigs(10, MLP.OPTIMIZER_ADAM_RESET, 0.0005f),
-                new MLPConfigs(10, MLP.OPTIMIZER_ADAM, 0.001f),
-                new MLPConfigs(10, MLP.OPTIMIZER_ADAM_RESET, 0.001f),
-                new MLPConfigs(10, MLP.OPTIMIZER_ADAM, 0.005f),
-                new MLPConfigs(10, MLP.OPTIMIZER_ADAM_RESET, 0.005f),
-                new MLPConfigs(8, MLP.OPTIMIZER_ADAM, 0.03f),
-                new MLPConfigs(8, MLP.OPTIMIZER_ADAM_RESET, 0.03f),
 
+        MLPConfigs [] nnConfigs = {
+//                new MLPConfigs(10, MLP.OPTIMIZER_RMSPROP, 0.01f),
+//                new MLPConfigs(10, MLP.OPTIMIZER_ADAGRAD, 0.03f),
+//                new MLPConfigs(10, MLP.OPTIMIZER_ADAGRAD, 0.07f),
+//                new MLPConfigs(10, MLP.OPTIMIZER_ADAGRAD,0.09f),
+
+//                new MLPConfigs(10, MLP.OPTIMIZER_SGD, 0.00075f),
+//                new MLPConfigs(10, MLP.OPTIMIZER_SGD, 0.0005f),
+//                new MLPConfigs(10, MLP.OPTIMIZER_SGD, 0.0075f),
+//                new MLPConfigs(10, MLP.OPTIMIZER_SGD, 0.005f),
+
+//                new MLPConfigs(10, MLP.OPTIMIZER_SGD, 0.000025f),
+//                new MLPConfigs(10, MLP.OPTIMIZER_SGD, 0.00025f),
+//                new MLPConfigs(10, MLP.OPTIMIZER_SGD, 0.0025f),
+//                new MLPConfigs(10, MLP.OPTIMIZER_SGD, 0.025f),
+//                new MLPConfigs(10, MLP.OPTIMIZER_ADAM, 0.000075f),
+//                new MLPConfigs(10, MLP.OPTIMIZER_ADAM, 0.000025f),
+//                new MLPConfigs(10, MLP.OPTIMIZER_ADAM, 0.00075f),
+//                new MLPConfigs(10, MLP.OPTIMIZER_ADAM, 0.00025f),
+//                new MLPConfigs(10, MLP.OPTIMIZER_ADAM, 0.0075f),
+//                new MLPConfigs(10, MLP.OPTIMIZER_ADAM, 0.005f),
+//                new MLPConfigs(10, MLP.OPTIMIZER_ADAM, 0.0025f),
+//                new MLPConfigs(10, MLP.OPTIMIZER_ADAM, 0.025f),
         };
 
-//        if (numberOfNeuronsIn2Power.getValue() <= 8) {
-            List<MLPConfigs> nnConfigsArrayList = new ArrayList<MLPConfigs>(Arrays.asList(nnConfigs));
-            nnConfigsArrayList.add(new MLPConfigs(8, MLP.OPTIMIZER_SGD, 0.0005f));
-            nnConfigsArrayList.add(new MLPConfigs(8, MLP.OPTIMIZER_SGD, 0.001f));
-            nnConfigsArrayList.add(new MLPConfigs(8, MLP.OPTIMIZER_ADAM, 0.07f));
-            nnConfigsArrayList.add(new MLPConfigs(8, MLP.OPTIMIZER_ADAM_RESET, 0.07f));
-            nnConfigs = nnConfigsArrayList.toArray(nnConfigs);
-//        }
-
+        List<MLPConfigs> nnConfigsArrayList = new ArrayList<MLPConfigs>(Arrays.asList(nnConfigs));
+        float [] denominator = {100.0f, 1000.f, 10000.0f};
+        float [] numerator = {1.0f, 2.5f, 5.0f, 7.5f};
+        for (int n=0; n < numerator.length; n++){
+            for (int d=0; d < denominator.length; d++){
+                float lr = numerator[n]/denominator[d];
+                nnConfigsArrayList.add(new MLPConfigs(8, MLP.OPTIMIZER_SGD, lr));
+                nnConfigsArrayList.add(new MLPConfigs(8, MLP.OPTIMIZER_ADAM, lr));
+            }
+        }
+        nnConfigs = nnConfigsArrayList.toArray(nnConfigs);
 
         this.nn = new MLP[nnConfigs.length];
         for(int i=0; i < nnConfigs.length; i++){
@@ -262,7 +284,7 @@ public class MultiMLP extends AbstractClassifier implements MultiClassClassifier
 
         try {
             statsDumpFile = new FileWriter("NN_loss.csv");
-            statsDumpFile.write("id,optimizer_type_learning_rate,estimated_loss,chosen_counts\n");
+            statsDumpFile.write("samplesSeenAtTrain,optimizer_type_learning_rate,estimated_loss,chosen_counts\n");
             statsDumpFile.flush();
         } catch (IOException e) {
             System.out.println("An error occurred.");
