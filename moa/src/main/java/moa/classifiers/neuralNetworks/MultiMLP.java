@@ -1,7 +1,6 @@
 package moa.classifiers.neuralNetworks;
 
 import com.github.javacliparser.FlagOption;
-import com.github.javacliparser.IntOption;
 import com.github.javacliparser.MultiChoiceOption;
 import com.yahoo.labs.samoa.instances.Instance;
 import moa.capabilities.CapabilitiesHandler;
@@ -9,6 +8,8 @@ import moa.capabilities.Capability;
 import moa.capabilities.ImmutableCapabilities;
 import moa.classifiers.AbstractClassifier;
 import moa.classifiers.MultiClassClassifier;
+//import moa.classifiers.core.driftdetection.ADWIN;
+//import moa.core.InstanceExample;
 import moa.core.Measurement;
 //import moa.evaluation.BasicClassificationPerformanceEvaluator;
 
@@ -33,7 +34,10 @@ public class MultiMLP extends AbstractClassifier implements MultiClassClassifier
     private double [] class_value = null;
     private ExecutorService exService = null;
     private FileWriter statsDumpFile;
-//    private BasicClassificationPerformanceEvaluator evaluator = new BasicClassificationPerformanceEvaluator();
+//    private BasicClassificationPerformanceEvaluator performanceEvaluator = new BasicClassificationPerformanceEvaluator();
+//    private long driftsDetected = 0;
+//    private ADWIN driftDetector = new ADWIN(1.0E-20);
+
     private static DecimalFormat decimalFormat = new DecimalFormat("0.00000");
 
     public FlagOption useOneHotEncode = new FlagOption("useOneHotEncode", 'h',
@@ -111,6 +115,10 @@ public class MultiMLP extends AbstractClassifier implements MultiClassClassifier
                 }
 
 //                start threads
+//                if (driftDetector.getChange()){
+//                    driftsDetected++;
+//                    System.out.println("Drift detected at " + samplesSeen);
+//                }
                 int numberOfMLPsToTrain = 3; // min value should be 2
                 int indexOfTheLastNetworkToTrain = (int)(samplesSeen % this.nn.length);
                 if (samplesSeen < 500){
@@ -175,6 +183,7 @@ public class MultiMLP extends AbstractClassifier implements MultiClassClassifier
     @Override
     public double[] getVotesForInstance(Instance instance) {
         int min_index = 0;
+        double [] votes;
         samplesSeen ++;
         if(this.nn == null) {
             initNNs(instance);
@@ -189,8 +198,10 @@ public class MultiMLP extends AbstractClassifier implements MultiClassClassifier
         }
         MLP.setFeatureValuesArray(instance, featureValues, useOneHotEncode.isSet(), true, normalizeInfo, samplesSeen);
         this.nn[min_index].chosenCount++;
-//        this.ensemble[i].evaluator.addResult(example, vote.getArrayRef());
-        return this.nn[min_index].getVotesForFeatureValues(instance, featureValues);
+        votes = this.nn[min_index].getVotesForFeatureValues(instance, featureValues);
+//        performanceEvaluator.addResult(new InstanceExample(instance), votes);
+//        driftDetector.setInput(performanceEvaluator.getPerformanceMeasurements()[1].getValue());
+        return votes;
     }
 
     @Override
@@ -205,6 +216,8 @@ public class MultiMLP extends AbstractClassifier implements MultiClassClassifier
     @Override
     protected Measurement[] getModelMeasurementsImpl() {
         printStats();
+//        return new Measurement[]{
+//                new Measurement("drifts detected", driftsDetected)};
         return null;
     }
 
