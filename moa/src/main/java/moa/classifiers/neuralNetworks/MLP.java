@@ -25,6 +25,7 @@ import moa.capabilities.ImmutableCapabilities;
 import moa.classifiers.AbstractClassifier;
 import moa.classifiers.MultiClassClassifier;
 import moa.classifiers.core.driftdetection.ADWIN;
+//import moa.core.InstanceExample;
 import moa.core.Measurement;
 import com.yahoo.labs.samoa.instances.Instance;
 import com.yahoo.labs.samoa.instances.InstancesHeader;
@@ -45,6 +46,7 @@ import ai.djl.training.Trainer;
 import ai.djl.training.loss.Loss;
 import ai.djl.training.tracker.Tracker;
 import ai.djl.training.optimizer.Optimizer;
+//import moa.evaluation.BasicClassificationPerformanceEvaluator;
 
 import java.text.DecimalFormat;
 import java.lang.Math;
@@ -97,6 +99,13 @@ public class MLP extends AbstractClassifier implements MultiClassClassifier {
 			"Number of neurons in the 1st layer in 2's power",
 			10, 4, 10);
 
+//	public FloatOption deltaForADWINOption = new FloatOption(
+//			"deltaForADWINOption",
+//			'd',
+//			"Delta for ADWI",
+//			1.0E-10, 1.0E-20, 1.0);
+	public double deltaForADWIN = 1.0E-5;
+
 	public long optimizerResetCount = 0;
 
 	@Override
@@ -104,7 +113,7 @@ public class MLP extends AbstractClassifier implements MultiClassClassifier {
         return "NN: special.";
     }
 
-	public ADWIN estimator = new ADWIN();
+	public ADWIN lossEstimator;
 	public float accumulatedLoss = 0;
 	public int chosenCount = 0;
 
@@ -116,6 +125,8 @@ public class MLP extends AbstractClassifier implements MultiClassClassifier {
 	private transient NDManager testingNDManager;
 	private double [] votes;
 	private boolean resetOptimiser = false;
+//	private BasicClassificationPerformanceEvaluator performanceEvaluator = new BasicClassificationPerformanceEvaluator();
+//	private ADWIN accEstimator;
 	private static DecimalFormat decimalFormat = new DecimalFormat("0.00000");
 
 
@@ -135,7 +146,13 @@ public class MLP extends AbstractClassifier implements MultiClassClassifier {
     public void resetLearningImpl() {
     }
 
-	public void trainOnFeatureValues(float[] featureValues, double [] classValue) {
+    public double getAccuracy(){
+//		return performanceEvaluator.getPerformanceMeasurements()[1].getValue();
+//		return accEstimator.getEstimation();
+		return 0.0f;
+	}
+
+	public void trainOnFeatureValues(float[] featureValues, double [] classValue /*, InstanceExample instanceExample*/) {
 		samplesSeen ++;
 		try{
 			NDManager childNDManager = trainingNDManager.newSubManager();
@@ -144,13 +161,18 @@ public class MLP extends AbstractClassifier implements MultiClassClassifier {
 
 			GradientCollector collector = trainer.newGradientCollector();
 			NDList preds = trainer.forward(d, l);
+//			for (int i = 0; i < votes.length; i++) {
+//				votes[i] = (double) preds.get(0).toFloatArray()[i];
+//			}
+//			performanceEvaluator.addResult(instanceExample, votes);
+//			accEstimator.setInput(performanceEvaluator.getPerformanceMeasurements()[1].getValue());
 			NDArray lossValue = trainer.getLoss().evaluate(l, preds);
 			accumulatedLoss += lossValue.getFloat();
 
-			double previousLossEstimation = estimator.getEstimation();
+			double previousLossEstimation = lossEstimator.getEstimation();
 			if (lossValue.getFloat() == 0.0f){
 //				System.out.println("Zero loss");
-				this.estimator.setInput(0.0);
+				this.lossEstimator.setInput(0.0);
 			}else{
 				try {
 					collector.backward(lossValue);
@@ -159,12 +181,12 @@ public class MLP extends AbstractClassifier implements MultiClassClassifier {
 				{
 //					trainer.step() throws above exception if all gradients are zero.
 				}
-				this.estimator.setInput(lossValue.getFloat());
+				this.lossEstimator.setInput(lossValue.getFloat());
 			}
 			//			print weights
 //			System.out.println(nnmodel.getBlock().getChildren().get("02Linear").getParameters().get("weight").getArray());
 
-			if (resetOptimiser && estimator.getChange() && (previousLossEstimation < estimator.getEstimation()) ){
+			if (resetOptimiser && lossEstimator.getChange() && (previousLossEstimation < lossEstimator.getEstimation()) ){
 //				System.out.println("Resetting optimizer:" + optimizerTypeOption.getChosenLabel() + " learning rate: " + decimalFormat.format(learningRateOption.getValue()));
 				optimizerResetCount++;
 				setTrainer();
@@ -190,7 +212,7 @@ public class MLP extends AbstractClassifier implements MultiClassClassifier {
 		setFeatureValuesArray(inst, pFeatureValues, useOneHotEncode.isSet(), false, normalizeInfo, samplesSeen);
 		pClassValue[0] = inst.classValue();
 
-		trainOnFeatureValues(pFeatureValues, pClassValue);
+		trainOnFeatureValues(pFeatureValues, pClassValue/*, new InstanceExample(inst)*/);
     }
 
     public double[] getVotesForFeatureValues(Instance inst, float[] featureValues) {
@@ -338,6 +360,9 @@ public class MLP extends AbstractClassifier implements MultiClassClassifier {
 			trainingNDManager = Engine.getInstance().newBaseManager();
 			testingNDManager = Engine.getInstance().newBaseManager();
 
+			lossEstimator = new ADWIN(deltaForADWIN);
+//			accEstimator = new ADWIN(deltaForADWIN);
+
 			switch (this.optimizerTypeOption.getChosenIndex()){
 				case MLP.OPTIMIZER_RMSPROP_RESET:
 				case MLP.OPTIMIZER_ADAGRAD_RESET:
@@ -355,6 +380,12 @@ public class MLP extends AbstractClassifier implements MultiClassClassifier {
 		}
 	}
 
+	public double getLossEstimation(){
+		if (samplesSeen == 0)
+			return 0.0f;
+//		return accumulatedLoss/samplesSeen;
+		return lossEstimator.getEstimation();
+	}
 	protected void setTrainer(){
 		if (trainer != null){
 			trainer.close();
