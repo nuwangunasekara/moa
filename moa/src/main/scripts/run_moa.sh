@@ -54,7 +54,7 @@ echo "Full results log file = $log_file"
 rm -f $log_file
 
 dataset=(spam_corpus WISDM_ar_v1.1_transformed elecNormNew nomao covtypeNorm kdd99 airlines RBF_f RBF_m LED_g LED_a AGR_a AGR_g)
-#dataset=(RBF_f)
+#dataset=(elecNormNew)
 re_run_count=0
 task_failed=0
 
