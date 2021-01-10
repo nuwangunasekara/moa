@@ -18,7 +18,11 @@ else
   exclude_s_pattern=' '
 fi
 
-if [ $(find  $RESULTS_DIR -iname "$s_pattern" | grep -v "$exclude_s_pattern" | sed 's/ /\\ /g'  | xargs ls -t | tail -n 1 |xargs grep -c 'Wall Time (Actual Time)') -eq 1 ]; then
+if [ $( find  $RESULTS_DIR -iname "$s_pattern" | grep -v "$exclude_s_pattern" | wc -l ) -eq 0 ]; then
+  echo "No results files to check."
+  exit 0
+fi
+if [ $( find  $RESULTS_DIR -iname "$s_pattern" | grep -v "$exclude_s_pattern" | sed 's/ /\\ /g'  | xargs ls -t | tail -n 1 |xargs grep -c 'Wall Time (Actual Time)' ) -eq 1 ]; then
   p_pattern='{printf "%30s, %40s, %40s, %40s, %40s\n", $1,$2,$6,$7,$9}'
 else
   p_pattern='{printf "%30s, %40s, %40s, %40s, %40s\n", $1,$2,$5,$6,$8}'
