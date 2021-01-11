@@ -56,7 +56,7 @@ rm -f $log_file
 dataset=(spam_corpus WISDM_ar_v1.1_transformed elecNormNew nomao covtypeNorm kdd99 airlines RBF_f RBF_m LED_g LED_a AGR_a AGR_g)
 #dataset=(elecNormNew)
 max_repeat=4
-datasets_to_repeat=(spam_corpus WISDM_ar_v1.1_transformed elecNormNew nomao)
+datasets_to_repeat=(WISDM_ar_v1.1_transformed elecNormNew nomao)
 declare -a repeat_exp_count
 for i in "${datasets_to_repeat[@]}"
 do
