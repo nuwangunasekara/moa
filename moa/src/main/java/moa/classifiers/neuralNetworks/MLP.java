@@ -97,7 +97,7 @@ public class MLP extends AbstractClassifier implements MultiClassClassifier {
 			"numberOfNeuronsIn2Power",
 			'N',
 			"Number of neurons in the 1st layer in 2's power",
-			10, 4, 10);
+			10, 2, 20);
 
 //	public FloatOption deltaForADWINOption = new FloatOption(
 //			"deltaForADWINOption",
