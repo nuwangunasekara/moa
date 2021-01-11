@@ -55,6 +55,14 @@ rm -f $log_file
 
 dataset=(spam_corpus WISDM_ar_v1.1_transformed elecNormNew nomao covtypeNorm kdd99 airlines RBF_f RBF_m LED_g LED_a AGR_a AGR_g)
 #dataset=(elecNormNew)
+max_repeat=4
+datasets_to_repeat=(spam_corpus WISDM_ar_v1.1_transformed elecNormNew nomao)
+declare -a repeat_exp_count
+for i in "${datasets_to_repeat[@]}"
+do
+    repeat_exp_count+=(${max_repeat})
+done
+
 re_run_count=0
 task_failed=0
 
@@ -112,6 +120,18 @@ time "$JCMD" \
 
   if [ $task_failed -eq 0 ]; then
     re_run_count=0
+    echo "Task=$i dataset=${dataset[$i]} PID=$PID ) was successful."
+    for (( j=0; j<${#datasets_to_repeat[@]}; j++ ))
+    do
+      if [ "${dataset[$i]}" == "${datasets_to_repeat[$j]}" ]; then
+        if [ $((${repeat_exp_count[$j]})) -gt 0 ]; then
+          repeat_exp_count[$j]=$((${repeat_exp_count[$j]} - 1))
+          echo "Repeat ${dataset[$i]} for the $((max_repeat - ${repeat_exp_count[$j]})) time"
+          i=$((i-1))
+          break
+        fi
+      fi
+    done
   else
     echo "Task=$i dataset=${dataset[$i]} PID=$PID ) failed."
     if [ $re_run_count -lt 2 ]; then
