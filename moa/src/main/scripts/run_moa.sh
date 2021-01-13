@@ -89,7 +89,7 @@ do
     repeat_exp_count+=(${max_repeat})
 done
 
-re_run_count=2
+re_run_count=0
 task_failed=0
 
 for (( i=0; i<${#dataset[@]}; i++ ))
