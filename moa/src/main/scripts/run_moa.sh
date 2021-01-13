@@ -1,8 +1,12 @@
 #trap "kill 0" EXIT
-
-if [ $# -lt 2 ]; then
+print_usage()
+{
   echo "Usage: $0 <dataset_dir> <out_csv_dir> <djl_cache_dir> <local_maven_repo>"
   echo "e.g:   $0 ~/Desktop/datasets/NEW/unzipped/ ~/Desktop/results ~/Desktop/djl.ai/ ~/Desktop/m2_cache/ "
+}
+
+if [ $# -lt 2 ]; then
+  print_usage
   exit 1
 fi
 
@@ -14,6 +18,7 @@ if [ $# -gt 2 ]; then
     export DJL_CACHE_DIR=$3
   else
     echo "DJL_CACHE_DIR can not be set. Directory $3 is not available."
+    print_usage
     exit 1
   fi
 fi
@@ -25,6 +30,7 @@ if [ $# -gt 3 ]; then
     export MAVEN_OPTS="-Dmaven.repo.local=$4"
   else
     echo "MAVEN_OPTS=-Dmaven.repo.local can not be set. Directory $4 is not available."
+    print_usage
     exit 1
   fi
 fi
