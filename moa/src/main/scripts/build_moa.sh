@@ -2,6 +2,7 @@ print_usage()
 {
   echo "Usage: $0 <local_maven_repo> <maven_conda_env>"
   echo "e.g:   $0 ~/Desktop/m2_cache/ <maven_conda_env>"
+  echo "e.g:   $0 /Scratch/ng98/JavaSetup1/local_m2/ /Scratch/ng98/JavaSetup1/conda"
 }
 
 if [ $# -lt 1 ]; then
