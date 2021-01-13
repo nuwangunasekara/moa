@@ -1,18 +1,37 @@
 #trap "kill 0" EXIT
 
 if [ $# -lt 2 ]; then
-  echo "Usage: $0 <dataset_dir> <out_csv_dir>"
-  echo "e.g:   $0 ~/Desktop/datasets/NEW/unzipped/ ~/Desktop/results"
+  echo "Usage: $0 <dataset_dir> <out_csv_dir> <djl_cache_dir> <local_maven_repo>"
+  echo "e.g:   $0 ~/Desktop/datasets/NEW/unzipped/ ~/Desktop/results ~/Desktop/djl.ai/ ~/Desktop/m2_cache/ "
   exit 1
 fi
 
 dataset_dir=$1
 out_csv_dir=$2
 
+if [ $# -gt 2 ]; then
+  if [ -d "$3" ]; then
+    export DJL_CACHE_DIR=$3
+  else
+    echo "DJL_CACHE_DIR can not be set. Directory $3 is not available."
+    exit 1
+  fi
+fi
+
+MAVEN_REPO="$(realpath ~)/.m2/repository"
+if [ $# -gt 3 ]; then
+  if [ -d "$4" ]; then
+    MAVEN_REPO="$4"
+    export MAVEN_OPTS="-Dmaven.repo.local=$4"
+  else
+    echo "MAVEN_OPTS=-Dmaven.repo.local can not be set. Directory $4 is not available."
+    exit 1
+  fi
+fi
+
 BASEDIR=`dirname $0`/..
 BASEDIR=`(cd "$BASEDIR"; pwd)`
 REPO=$BASEDIR/../../target/classes
-MAVEN_REPO="$(realpath ~)/.m2/repository"
 JAR_PATHS="$(for j in $(find $MAVEN_REPO -name '*.jar');do printf '%s:' $j; done)"
 CLASSPATH="$JAR_PATHS$REPO/"
 JAVA_AGENT_PATH="$(find $MAVEN_REPO -name 'sizeofag-1.0.4.jar')"
@@ -54,8 +73,8 @@ echo "Full results log file = $log_file"
 rm -f $log_file
 
 dataset=(spam_corpus WISDM_ar_v1.1_transformed elecNormNew nomao covtypeNorm kdd99 airlines RBF_f RBF_m LED_g LED_a AGR_a AGR_g)
-#dataset=(elecNormNew)
-max_repeat=4
+dataset=(elecNormNew)
+max_repeat=0
 datasets_to_repeat=(WISDM_ar_v1.1_transformed elecNormNew nomao)
 declare -a repeat_exp_count
 for i in "${datasets_to_repeat[@]}"
