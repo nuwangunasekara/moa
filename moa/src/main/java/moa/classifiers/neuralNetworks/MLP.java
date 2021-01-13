@@ -99,6 +99,14 @@ public class MLP extends AbstractClassifier implements MultiClassClassifier {
 			"Number of neurons in the 1st layer in 2's power",
 			10, 2, 20);
 
+	public static final int deviceTypeOptionGPU = 0;
+	public static final int deviceTypeOptionCPU = 1;
+	public MultiChoiceOption deviceTypeOption = new MultiChoiceOption("deviceType", 'd',
+			"Choose device to run the model(use CPU if GPUs are not available)",
+			new String[]{"GPU","CPU"},
+			new String[]{"GPU (use CPU if not available)", "CPU"},
+			deviceTypeOptionGPU);
+
 //	public FloatOption deltaForADWINOption = new FloatOption(
 //			"deltaForADWINOption",
 //			'd',
@@ -355,12 +363,12 @@ public class MLP extends AbstractClassifier implements MultiClassClassifier {
 		try {
 			gpuCount = Device.getGpuCount();
 			devices = Device.getDevices(gpuCount);
-			nnmodel = Model.newInstance("mlp", ( gpuCount > 0) ? Device.gpu() : Device.cpu());
+			nnmodel = Model.newInstance("mlp", ((deviceTypeOption.getChosenIndex() == deviceTypeOptionGPU) && (gpuCount > 0)) ? Device.gpu() : Device.cpu());
 			// Construct neural network and set it in the block
 			Block block = new Mlp(featureValuesArraySize, inst.numClasses(), new int[] {(int) Math.pow(2, numberOfNeuronsIn2Power.getValue())});
 //		Block block = new Mlp(featureValuesArraySize, inst.numClasses(), new int[] {2});
 			nnmodel.setBlock(block);
-
+			System.out.println("Model using Device: " + nnmodel.getNDManager().getDevice());
 			trainingNDManager = Engine.getInstance().newBaseManager();
 			testingNDManager = Engine.getInstance().newBaseManager();
 
