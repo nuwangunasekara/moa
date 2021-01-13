@@ -3,6 +3,7 @@ print_usage()
 {
   echo "Usage: $0 <dataset_dir> <out_csv_dir> <djl_cache_dir> <local_maven_repo>"
   echo "e.g:   $0 ~/Desktop/datasets/NEW/unzipped/ ~/Desktop/results ~/Desktop/djl.ai/ ~/Desktop/m2_cache/ "
+  echo "e.g:   $0 /Scratch/ng98/datasets/NEW/unzipped/ /Scratch/ng98/JavaSetup1/resultsNN/Exp17_test/ /Scratch/ng98/JavaSetup1/djl.ai/ /Scratch/ng98/JavaSetup1/local_m2/"
 }
 
 if [ $# -lt 2 ]; then
@@ -79,8 +80,8 @@ echo "Full results log file = $log_file"
 rm -f $log_file
 
 dataset=(spam_corpus WISDM_ar_v1.1_transformed elecNormNew nomao covtypeNorm kdd99 airlines RBF_f RBF_m LED_g LED_a AGR_a AGR_g)
-dataset=(elecNormNew)
-max_repeat=0
+#dataset=(elecNormNew)
+max_repeat=4
 datasets_to_repeat=(WISDM_ar_v1.1_transformed elecNormNew nomao)
 declare -a repeat_exp_count
 for i in "${datasets_to_repeat[@]}"
@@ -88,7 +89,7 @@ do
     repeat_exp_count+=(${max_repeat})
 done
 
-re_run_count=0
+re_run_count=2
 task_failed=0
 
 for (( i=0; i<${#dataset[@]}; i++ ))
