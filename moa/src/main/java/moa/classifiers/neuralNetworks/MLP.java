@@ -127,6 +127,8 @@ public class MLP extends AbstractClassifier implements MultiClassClassifier {
 	private boolean resetOptimiser = false;
 //	private BasicClassificationPerformanceEvaluator performanceEvaluator = new BasicClassificationPerformanceEvaluator();
 //	private ADWIN accEstimator;
+	private Device[] devices;
+	private int gpuCount;
 	private static DecimalFormat decimalFormat = new DecimalFormat("0.00000");
 
 
@@ -351,7 +353,9 @@ public class MLP extends AbstractClassifier implements MultiClassClassifier {
 		}
 
 		try {
-			nnmodel = Model.newInstance("mlp", Device.cpu());
+			gpuCount = Device.getGpuCount();
+			devices = Device.getDevices(gpuCount);
+			nnmodel = Model.newInstance("mlp", ( gpuCount > 0) ? Device.gpu() : Device.cpu());
 			// Construct neural network and set it in the block
 			Block block = new Mlp(featureValuesArraySize, inst.numClasses(), new int[] {(int) Math.pow(2, numberOfNeuronsIn2Power.getValue())});
 //		Block block = new Mlp(featureValuesArraySize, inst.numClasses(), new int[] {2});
