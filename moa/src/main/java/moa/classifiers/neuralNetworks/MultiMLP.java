@@ -44,7 +44,7 @@ public class MultiMLP extends AbstractClassifier implements MultiClassClassifier
     private int maxInstancesToTrainAtStart = 200;
     private int instancesToProcessAfterADrift;
     private int numberOfRandomMPLsToTrainOnDrift;
-    private int numberOfMPLsToTrainOffDrift; // min value should be 2
+    private int numberOfMPLsToTrainAtStartAndOffDrift; // min value should be 2
     private ADWIN driftDetector = new ADWIN(1.0E-3);
 
     private static DecimalFormat decimalFormat = new DecimalFormat("0.00000");
@@ -134,37 +134,36 @@ public class MultiMLP extends AbstractClassifier implements MultiClassClassifier
                 }
 
 //                start threads
-                int numberOfMLPsToTrain = numberOfMPLsToTrainOffDrift;
+                int numberOfMLPsToTrain = numberOfMPLsToTrainAtStartAndOffDrift;
                 if ((samplesSeen < maxInstancesToTrainAtStart ) || (instancesToProcessSinceLastDrift > 0 ) ){
                     numberOfMLPsToTrain = maxNumberOfMLPsToTrainOnDrift;
                     if (instancesToProcessSinceLastDrift > 0){
                         learnedOnDriftsFor1000Samples++;
                     }else {
                     }
-                    System.out.println("@ "+samplesSeen
-                            +" driftsDetectedPer1000Samples : "+ driftsDetectedPer1000Samples
-                            +" learnedOnDriftsFor1000Samples : " + learnedOnDriftsFor1000Samples
-                            +" numberOfMLPsToTrain : " + numberOfMLPsToTrain);
+//                    System.out.println("@ "+samplesSeen
+//                            +" driftsDetectedPer1000Samples : "+ driftsDetectedPer1000Samples
+//                            +" learnedOnDriftsFor1000Samples : " + learnedOnDriftsFor1000Samples
+//                            +" numberOfMLPsToTrain : " + numberOfMLPsToTrain);
                     instancesToProcessSinceLastDrift --;
-                }else{
-                    if (modelSelectionCriteria.getChosenIndex() == SELECT_USING_LOSS){
-                        Arrays.sort(this.nn, new Comparator<MLP>() {
-                            @Override
-                            public int compare(MLP o1, MLP o2) {
-                                return Double.compare(o1.getLossEstimation(), o2.getLossEstimation());
-                            }
-                        });
-                    }else{
-                        Arrays.sort(this.nn, new Comparator<MLP>() {
-                            @Override
-                            public int compare(MLP o1, MLP o2) {
-                                return Double.compare(o1.getAccuracy(), o2.getAccuracy());
-                            }
-                        });
-                    }
                 }
 
-                int indexOfTheFirstRandomNetworkToTrain = (int) (samplesSeen % (this.nn.length - numberOfRandomMPLsToTrainOnDrift + 1));
+                if (modelSelectionCriteria.getChosenIndex() == SELECT_USING_LOSS){
+                    Arrays.sort(this.nn, new Comparator<MLP>() {
+                        @Override
+                        public int compare(MLP o1, MLP o2) {
+                            return Double.compare(o1.getLossEstimation(), o2.getLossEstimation());
+                        }
+                    });
+                }else{
+                    Arrays.sort(this.nn, new Comparator<MLP>() {
+                        @Override
+                        public int compare(MLP o1, MLP o2) {
+                            return Double.compare(o1.getAccuracy(), o2.getAccuracy());
+                        }
+                    });
+                }
+
                 final Future<Boolean> [] runFuture = new Future[numberOfMLPsToTrain];
                 for (int i =0; i < numberOfMLPsToTrain; i++) {
                     int nnIndex;
@@ -400,21 +399,21 @@ public class MultiMLP extends AbstractClassifier implements MultiClassClassifier
             }
         }
 
-        numberOfMPLsToTrainOffDrift = 2;
+        numberOfMPLsToTrainAtStartAndOffDrift = 10;
         if (featureValuesArraySize > 1000 ){
-            maxNumberOfMLPsToTrainOnDrift = 4;
+            maxNumberOfMLPsToTrainOnDrift = numberOfMPLsToTrainAtStartAndOffDrift;
             numberOfRandomMPLsToTrainOnDrift = (maxNumberOfMLPsToTrainOnDrift /2);
             maxInstancesToTrainAtStart = 100;
         }else if (featureValuesArraySize > 500 ){
-            maxNumberOfMLPsToTrainOnDrift = 6;
+            maxNumberOfMLPsToTrainOnDrift = numberOfMPLsToTrainAtStartAndOffDrift;
             numberOfRandomMPLsToTrainOnDrift = (maxNumberOfMLPsToTrainOnDrift /2);
             maxInstancesToTrainAtStart = 200;
         }else if (featureValuesArraySize > 100 ){
-            maxNumberOfMLPsToTrainOnDrift = 8;
+            maxNumberOfMLPsToTrainOnDrift = numberOfMPLsToTrainAtStartAndOffDrift;
             maxInstancesToTrainAtStart = 400;
             numberOfRandomMPLsToTrainOnDrift = (maxNumberOfMLPsToTrainOnDrift /2);
         }else{
-            maxNumberOfMLPsToTrainOnDrift = 8;
+            maxNumberOfMLPsToTrainOnDrift = numberOfMPLsToTrainAtStartAndOffDrift;
             maxInstancesToTrainAtStart = 800;
             numberOfRandomMPLsToTrainOnDrift = (maxNumberOfMLPsToTrainOnDrift /2);
         }
