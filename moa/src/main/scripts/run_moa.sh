@@ -6,6 +6,27 @@ print_usage()
   echo "e.g:   $0 /Scratch/ng98/datasets/NEW/unzipped/ /Scratch/ng98/JavaSetup1/resultsNN/Exp17_test/ /Scratch/ng98/JavaSetup1/djl.ai/ /Scratch/ng98/JavaSetup1/local_m2/"
 }
 
+#Store the current Process ID, we don't want to kill the current executing process id
+SCRIPT_PID=$$
+echo "Script pid = $SCRIPT_PID"
+#####################################################################################################
+# config variables
+
+dataset=(spam_corpus WISDM_ar_v1.1_transformed elecNormNew nomao covtypeNorm kdd99 airlines RBF_f RBF_m LED_g LED_a AGR_a AGR_g)
+dataset=(WISDM_ar_v1.1_transformed elecNormNew)
+
+datasets_to_repeat=(WISDM_ar_v1.1_transformed elecNormNew nomao)
+max_repeat=0
+
+# times to re-run on failure
+max_re_run_count=2
+
+#learner='meta.StreamingRandomPatches -s 10'
+#learner='meta.AdaptiveRandomForest -s 10 -j 10'
+learner='neuralNetworks.MultiMLP -h -n -t UseThreads'
+# learner='lazy.kNN'
+#####################################################################################################
+
 if [ $# -lt 2 ]; then
   print_usage
   exit 1
@@ -68,21 +89,10 @@ case $(uname)  in
     ;;
 esac
 
-#learner='meta.StreamingRandomPatches -s 10'
-learner='neuralNetworks.MultiMLP -h -n -t UseThreads'
-# learner='lazy.kNN'
-
 log_file="${out_csv_dir}/full.log"
-
 echo "Full results log file = $log_file"
-
-
 rm -f $log_file
 
-dataset=(spam_corpus WISDM_ar_v1.1_transformed elecNormNew nomao covtypeNorm kdd99 airlines RBF_f RBF_m LED_g LED_a AGR_a AGR_g)
-#dataset=(elecNormNew)
-max_repeat=4
-datasets_to_repeat=(WISDM_ar_v1.1_transformed elecNormNew nomao)
 declare -a repeat_exp_count
 for i in "${datasets_to_repeat[@]}"
 do
@@ -96,6 +106,7 @@ for (( i=0; i<${#dataset[@]}; i++ ))
 do
   sleep 60
   task_failed=0
+  echo "======================================================================================="
   echo "Dataset = ${dataset[$i]}"
   in_file="${dataset_dir}/${dataset[$i]}.arff"
   out_file="${out_csv_dir}/${dataset[$i]}.csv"
@@ -120,12 +131,12 @@ time "$JCMD" \
     task_failed=1
   else
     PID=$!
-    echo "PID=$PID : $exp_cmd"
+    echo -e "PID=$PID : $exp_cmd \n"
     sleep 5
 
     while [ $(grep -m 1 -c 'Task completed' $tmp_log_file ) -lt 1 ];
     do
-      sleep 60
+      sleep 10
       if ! ps -p $PID &>/dev/null;
       then
         task_failed=1
@@ -134,44 +145,45 @@ time "$JCMD" \
         echo -ne "Waiting for exp with $PID to finish\r"
       fi
     done
-    echo "Child processors============================="
-    #Store the current Process ID, we don't want to kill the current executing process id
-    CURPID=$$
 
+    echo "Child processors of PID $PID----------------------"
     # This is process id, parameter passed by user
     ppid=$PID
 
     if [ -z $ppid ] ; then
-       echo No PID given.
+       echo "No PID given."
     fi
 
-    arraycounter=1
+    child_process_count=1
     while true
     do
-            FORLOOP=FALSE
-            # Get all the child process id
-            for i in `ps -ef| awk '$3 == '$ppid' { print $2 }'`
-            do
-                    if [ $i -ne $CURPID ] ; then
-                            procid[$arraycounter]=$i
-                            arraycounter=`expr $arraycounter + 1`
-                            ppid=$i
-                            FORLOOP=TRUE
-                    fi
-            done
-            if [ "$FORLOOP" = "FALSE" ] ; then
-               arraycounter=`expr $arraycounter - 1`
-               ## We want to kill child process id first and then parent id's
-               while [ $arraycounter -ne 0 ]
-               do
-                 echo "killing ${procid[$arraycounter]}"
-                 kill -9 "${procid[$arraycounter]}" >/dev/null
-                 arraycounter=`expr $arraycounter - 1`
-               done
-             break
-            fi
+      FORLOOP=FALSE
+      # Get all the child process id
+      for c_pid in `ps -ef| awk '$3 == '$ppid' { print $2 }'`
+      do
+        if [ $c_pid -ne $SCRIPT_PID ] ; then
+          child_pid[$child_process_count]=$c_pid
+          child_process_count=$((child_process_count + 1))
+          ppid=$c_pid
+          FORLOOP=TRUE
+        else
+          echo "Skip adding PID $SCRIPT_PID"
+        fi
+      done
+      if [ "$FORLOOP" = "FALSE" ] ; then
+         child_process_count=$((child_process_count - 1))
+         ## We want to kill child process id first and then parent id's
+         while [ $child_process_count -ne 0 ]
+         do
+           echo "killing ${child_pid[$child_process_count]}"
+           kill -9 "${child_pid[$child_process_count]}" >/dev/null
+           child_process_count=$((child_process_count - 1))
+         done
+       break
+      fi
     done
-    echo "Child processors============================="
+    echo "Child processors of PID $PID----------------------"
+    echo -e "killing PID $PID\n"
     kill $PID
   fi
 
@@ -183,7 +195,7 @@ time "$JCMD" \
 
   if [ $task_failed -eq 0 ]; then
     re_run_count=0
-    echo "Task=$i dataset=${dataset[$i]} PID=$PID ) was successful."
+    echo -e "Task=$i dataset=${dataset[$i]} PID=$PID ) was successful.\n"
     for (( j=0; j<${#datasets_to_repeat[@]}; j++ ))
     do
       if [ "${dataset[$i]}" == "${datasets_to_repeat[$j]}" ]; then
@@ -197,7 +209,7 @@ time "$JCMD" \
     done
   else
     echo "Task=$i dataset=${dataset[$i]} PID=$PID ) failed."
-    if [ $re_run_count -lt 2 ]; then
+    if [ $re_run_count -lt $max_re_run_count ]; then
       re_run_count=$((re_run_count+1))
       echo "Re-running it for the $re_run_count time."
       i=$((i-1))
