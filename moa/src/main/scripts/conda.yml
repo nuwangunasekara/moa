@@ -1,4 +1,5 @@
 channels:
+  - nvidia
   - pytorch
   - anaconda
   - conda-forge
