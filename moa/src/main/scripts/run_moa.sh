@@ -13,7 +13,7 @@ echo "Script pid = $SCRIPT_PID"
 # config variables
 
 dataset=(spam_corpus WISDM_ar_v1.1_transformed elecNormNew nomao covtypeNorm kdd99 airlines RBF_f RBF_m LED_g LED_a AGR_a AGR_g)
-dataset=(WISDM_ar_v1.1_transformed elecNormNew)
+dataset=(elecNormNew)
 
 datasets_to_repeat=(WISDM_ar_v1.1_transformed elecNormNew nomao)
 max_repeat=0
@@ -118,14 +118,14 @@ do
 
   rm -f tmp_log_file
 
-  exp_cmd="moa.DoTask \"EvaluateInterleavedTestThenTrain -l ($learner) -s (ArffFileStream -f $in_file) -i 10000000 -f 10000000 -q 10000000 -d $out_file\" &>$tmp_log_file &"
+  exp_cmd="moa.DoTask \"EvaluateInterleavedTestThenTrain1 -l ($learner) -s (ArffFileStream -f $in_file) -i 10000000 -f 10000000 -q 10000000 -d $out_file\" &>$tmp_log_file &"
   echo -e "\n$exp_cmd\n"
   echo -e "\n$exp_cmd\n" > $tmp_log_file
 time "$JCMD" \
   -classpath "$CLASSPATH" \
   -Xmx16g -Xms50m -Xss1g \
   -javaagent:"$JAVA_AGENT_PATH" \
-  moa.DoTask "EvaluateInterleavedTestThenTrain -l ($learner) -s (ArffFileStream -f $in_file) -i 10000000 -f 10000000 -q 10000000 -d $out_file" &>$tmp_log_file &
+  moa.DoTask "EvaluateInterleavedTestThenTrain1 -l ($learner) -s (ArffFileStream -f $in_file) -i 10000000 -f 10000000 -q 10000000 -d $out_file" &>$tmp_log_file &
 
   if [ -z $! ]; then
     task_failed=1
