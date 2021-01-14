@@ -2,8 +2,8 @@
 print_usage()
 {
   echo "Usage: $0 <dataset_dir> <out_csv_dir> <djl_cache_dir> <local_maven_repo>"
-  echo "e.g:   $0 ~/Desktop/datasets/NEW/unzipped/ ~/Desktop/results ~/Desktop/djl.ai/ ~/Desktop/m2_cache/ "
-  echo "e.g:   $0 /Scratch/ng98/datasets/NEW/unzipped/ /Scratch/ng98/JavaSetup1/resultsNN/Exp17_test/ /Scratch/ng98/JavaSetup1/djl.ai/ /Scratch/ng98/JavaSetup1/local_m2/"
+  echo "e.g:   $0 ~/Desktop/datasets/NEW/unzipped/ ~/Desktop/results ~/Desktop/djl.ai/ ~/Desktop/m2_cache/ /Users/ng98/Desktop/condaJava"
+  echo "e.g:   $0 /Scratch/ng98/datasets/NEW/unzipped/ /Scratch/ng98/JavaSetup1/resultsNN/Exp17_test/ /Scratch/ng98/JavaSetup1/djl.ai/ /Scratch/ng98/JavaSetup1/local_m2/ /Scratch/ng98/JavaSetup1/conda"
 }
 
 #Store the current Process ID, we don't want to kill the current executing process id
@@ -19,7 +19,7 @@ datasets_to_repeat=(WISDM_ar_v1.1_transformed elecNormNew nomao)
 max_repeat=0
 
 # times to re-run on failure
-max_re_run_count=2
+max_re_run_count=0
 
 #learner='meta.StreamingRandomPatches -s 10'
 #learner='meta.AdaptiveRandomForest -s 10 -j 10'
@@ -55,6 +55,14 @@ if [ $# -gt 3 ]; then
     print_usage
     exit 1
   fi
+fi
+
+
+if [ $# -gt 4 ]; then
+  eval "$(conda shell.bash hook)"
+  conda init bash
+  conda activate "$5"
+  conda env list
 fi
 
 BASEDIR=`dirname $0`/..
