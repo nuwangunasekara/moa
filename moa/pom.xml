@@ -193,7 +193,9 @@
       <groupId>ai.djl.pytorch</groupId>
       <artifactId>pytorch-native-auto</artifactId>
       <version>1.7.0</version>
+      <scope>runtime</scope>
     </dependency>
+
 
     <!--    https://mvnrepository.com/artifact/ai.djl.mxnet/mxnet-native-auto-->
 <!--    <dependency>-->
