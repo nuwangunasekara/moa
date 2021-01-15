@@ -57,6 +57,12 @@ if [ $# -gt 3 ]; then
   fi
 fi
 
+for f in $( find "${MAVEN_REPO}/org/slf4j/slf4j-api/" -name "*1.5.6*" );
+do
+  echo "Removing $f"
+  rm -r "$f"
+done
+
 
 if [ $# -gt 4 ]; then
   eval "$(conda shell.bash hook)"
