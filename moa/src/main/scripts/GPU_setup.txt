@@ -1,0 +1,8 @@
+https://developer.nvidia.com/cuda-downloads?target_os=Linux&target_arch=x86_64&target_distro=Ubuntu&target_version=2004&target_type=debnetwork
+https://docs.nvidia.com/cuda/cuda-installation-guide-linux/index.html#ubuntu-installation
+https://docs.nvidia.com/cuda/cuda-installation-guide-linux/index.html#pre-installation-actions
+https://docs.nvidia.com/cuda/cuda-quick-start-guide/index.html#linux-x86_64
+https://docs.nvidia.com/cuda/cuda-installation-guide-linux/index.html#install-libraries
+https://developer.nvidia.com/cuda-gpus#compute
+
+
