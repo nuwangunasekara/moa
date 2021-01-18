@@ -368,9 +368,9 @@ public class MLP extends AbstractClassifier implements MultiClassClassifier {
 			Block block = new Mlp(featureValuesArraySize, inst.numClasses(), new int[] {(int) Math.pow(2, numberOfNeuronsIn2Power.getValue())});
 //		Block block = new Mlp(featureValuesArraySize, inst.numClasses(), new int[] {2});
 			nnmodel.setBlock(block);
-			System.out.println("Model using Device: " + nnmodel.getNDManager().getDevice());
 			trainingNDManager = Engine.getInstance().newBaseManager(nnmodel.getNDManager().getDevice());
 			testingNDManager = Engine.getInstance().newBaseManager(nnmodel.getNDManager().getDevice());
+			System.out.println("Model using Device: " + nnmodel.getNDManager().getDevice() + "Trainer using Device: " + trainingNDManager.getDevice() + "Tester using Device: " + testingNDManager.getDevice());
 
 			lossEstimator = new ADWIN(deltaForADWIN);
 //			accEstimator = new ADWIN(deltaForADWIN);
