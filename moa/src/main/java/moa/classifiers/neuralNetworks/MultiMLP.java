@@ -71,6 +71,12 @@ public class MultiMLP extends AbstractClassifier implements MultiClassClassifier
             new String[]{"loss", "accuracy"},
             new String[]{"loss", "accuracy"}, SELECT_USING_LOSS);
 
+    public MultiChoiceOption deviceTypeOption = new MultiChoiceOption("deviceType", 'd',
+            "Choose device to run the model(use CPU if GPUs are not available)",
+            new String[]{"GPU","CPU"},
+            new String[]{"GPU (use CPU if not available)", "CPU"},
+            MLP.deviceTypeOptionGPU);
+
     @Override
     public void resetLearningImpl() {
         if (nn != null) {
@@ -361,6 +367,7 @@ public class MultiMLP extends AbstractClassifier implements MultiClassClassifier
             this.nn[i].optimizerTypeOption.setChosenIndex(nnConfigs[i].optimizerType);
             this.nn[i].learningRateOption.setValue(nnConfigs[i].learningRate);
             this.nn[i].useOneHotEncode.setValue(useOneHotEncode.isSet());
+            this.nn[i].deviceTypeOption.setChosenIndex(deviceTypeOption.getChosenIndex());
             this.nn[i].numberOfNeuronsIn2Power.setValue(nnConfigs[i].numberOfNeuronsIn2Power);
             this.nn[i].deltaForADWIN = nnConfigs[i].deltaForADWIN;
 
