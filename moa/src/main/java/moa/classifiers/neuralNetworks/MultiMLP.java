@@ -43,7 +43,7 @@ public class MultiMLP extends AbstractClassifier implements MultiClassClassifier
     private int maxNumberOfMLPsToTrainOnDrift = 15;
     private int maxInstancesToTrainAtStart = 200;
     private int instancesToProcessAfterADrift;
-    private int numberOfRandomMPLsToTrainOnDrift;
+    private int numberOfTopMPLsToTrainOnDrift;
     private int numberOfMPLsToTrainAtStartAndOffDrift; // min value should be 2
     private ADWIN driftDetector = new ADWIN(1.0E-3);
 
@@ -173,18 +173,20 @@ public class MultiMLP extends AbstractClassifier implements MultiClassClassifier
                 final Future<Boolean> [] runFuture = new Future[numberOfMLPsToTrain];
                 for (int i =0; i < numberOfMLPsToTrain; i++) {
                     int nnIndex;
-                    if (i < numberOfRandomMPLsToTrainOnDrift){
+                    if (i < numberOfTopMPLsToTrainOnDrift){
+                        // top most train
                         if (modelSelectionCriteria.getChosenIndex() == SELECT_USING_LOSS) {
                             nnIndex = i;
                         }else {
                             nnIndex = this.nn.length - 1 - i;
                         }
                     }else {
-                        int offSet = (int) ((samplesSeen + i) % (this.nn.length  - numberOfRandomMPLsToTrainOnDrift));
+                        // Random train
+                        int offSet = (int) ((samplesSeen + i) % (this.nn.length  - numberOfTopMPLsToTrainOnDrift));
                         if (modelSelectionCriteria.getChosenIndex() == SELECT_USING_LOSS) {
-                            nnIndex = numberOfRandomMPLsToTrainOnDrift + offSet;
+                            nnIndex = numberOfTopMPLsToTrainOnDrift + offSet;
                         }else{
-                            nnIndex = this.nn.length - 1 - numberOfRandomMPLsToTrainOnDrift - offSet;
+                            nnIndex = this.nn.length - 1 - numberOfTopMPLsToTrainOnDrift - offSet;
                         }
                     }
                     runFuture[i] = exService.submit(new TrainThread(this.nn[nnIndex], this.featureValues, this.class_value/*, instanceExample*/));
@@ -350,8 +352,8 @@ public class MultiMLP extends AbstractClassifier implements MultiClassClassifier
         };
 
         List<MLPConfigs> nnConfigsArrayList = new ArrayList<MLPConfigs>(Arrays.asList(nnConfigs));
-        float [] denominator = {10.0f, 100.0f, 1000.0f, 10000.0f};
-        float [] numerator = {1.0f, 1.25f, 2.5f, 3.75f, 5.0f, 6.25f, 7.5f};
+        float [] denominator = {10.0f, 100.0f, 1000.0f, 10000.0f, 100000.0f};
+        float [] numerator = {5.0f};
         for (int n=0; n < numerator.length; n++){
             for (int d=0; d < denominator.length; d++){
                 float lr = numerator[n]/denominator[d];
@@ -409,22 +411,22 @@ public class MultiMLP extends AbstractClassifier implements MultiClassClassifier
         numberOfMPLsToTrainAtStartAndOffDrift = 10;
         if (featureValuesArraySize > 1000 ){
             maxNumberOfMLPsToTrainOnDrift = numberOfMPLsToTrainAtStartAndOffDrift;
-            numberOfRandomMPLsToTrainOnDrift = (maxNumberOfMLPsToTrainOnDrift /2);
+            numberOfTopMPLsToTrainOnDrift = (maxNumberOfMLPsToTrainOnDrift /2);
             maxInstancesToTrainAtStart = 100;
         }else if (featureValuesArraySize > 500 ){
             maxNumberOfMLPsToTrainOnDrift = numberOfMPLsToTrainAtStartAndOffDrift;
-            numberOfRandomMPLsToTrainOnDrift = (maxNumberOfMLPsToTrainOnDrift /2);
+            numberOfTopMPLsToTrainOnDrift = (maxNumberOfMLPsToTrainOnDrift /2);
             maxInstancesToTrainAtStart = 200;
         }else if (featureValuesArraySize > 100 ){
             maxNumberOfMLPsToTrainOnDrift = numberOfMPLsToTrainAtStartAndOffDrift;
             maxInstancesToTrainAtStart = 400;
-            numberOfRandomMPLsToTrainOnDrift = (maxNumberOfMLPsToTrainOnDrift /2);
+            numberOfTopMPLsToTrainOnDrift = (maxNumberOfMLPsToTrainOnDrift /2);
         }else{
             maxNumberOfMLPsToTrainOnDrift = numberOfMPLsToTrainAtStartAndOffDrift;
             maxInstancesToTrainAtStart = 800;
-            numberOfRandomMPLsToTrainOnDrift = (maxNumberOfMLPsToTrainOnDrift /2);
+            numberOfTopMPLsToTrainOnDrift = (maxNumberOfMLPsToTrainOnDrift /2);
         }
-
+        numberOfTopMPLsToTrainOnDrift = maxNumberOfMLPsToTrainOnDrift;
         instancesToProcessAfterADrift = 2 * (nn.length - maxNumberOfMLPsToTrainOnDrift + 1);
     }
 
