@@ -57,7 +57,7 @@ if [ $# -gt 3 ]; then
   fi
 fi
 
-for f in $( find "${MAVEN_REPO}/org/slf4j/slf4j-api/" -name "*1.5.6*" );
+for f in $( find "${MAVEN_REPO}/org/slf4j/" -name "*1.5.6*" );
 do
   echo "Removing $f"
   rm -r "$f"
@@ -125,6 +125,16 @@ do
   in_file="${dataset_dir}/${dataset[$i]}.arff"
   out_file="${out_csv_dir}/${dataset[$i]}.csv"
   tmp_log_file="${out_csv_dir}/${dataset[$i]}.log"
+
+  in_file_lines=$(wc -l $in_file |awk '{print $1}')
+  in_file_desc_lines=$(grep -h -n '@data' "$in_file" | awk -F ':' '{print $1}')
+  warmup_instances=$(($((in_file_lines - in_file_desc_lines -1)) /100))
+  if [ $warmup_instances -gt 1000 ]; then
+    warmup_instances=1000
+  fi
+  if [[ "$learner" =~  "MultiMLP" ]]; then
+    learner="$learner -s $warmup_instances"
+  fi
 
   if [ -f $out_file ]; then
     echo "$out_file already available"

@@ -1,6 +1,7 @@
 package moa.classifiers.neuralNetworks;
 
 import com.github.javacliparser.FlagOption;
+import com.github.javacliparser.IntOption;
 import com.github.javacliparser.MultiChoiceOption;
 import com.yahoo.labs.samoa.instances.Instance;
 import moa.capabilities.CapabilitiesHandler;
@@ -75,7 +76,13 @@ public class MultiMLP extends AbstractClassifier implements MultiClassClassifier
             "Choose device to run the model(use CPU if GPUs are not available)",
             new String[]{"GPU","CPU"},
             new String[]{"GPU (use CPU if not available)", "CPU"},
-            MLP.deviceTypeOptionGPU);
+            MLP.deviceTypeOptionCPU);
+
+    public IntOption numberOfInstancesToTrainAtStartOption = new IntOption(
+            "numberOfInstancesToTrainAtStart",
+            's',
+            "Number of instances to train at start",
+            100, 0, Integer.MAX_VALUE);
 
     @Override
     public void resetLearningImpl() {
@@ -408,25 +415,29 @@ public class MultiMLP extends AbstractClassifier implements MultiClassClassifier
             }
         }
 
+//        if (featureValuesArraySize > 1000 ){
+//            maxNumberOfMLPsToTrainOnDrift = numberOfMPLsToTrainAtStartAndOffDrift;
+//            numberOfTopMPLsToTrainOnDrift = (maxNumberOfMLPsToTrainOnDrift /2);
+//            maxInstancesToTrainAtStart = 100;
+//        }else if (featureValuesArraySize > 500 ){
+//            maxNumberOfMLPsToTrainOnDrift = numberOfMPLsToTrainAtStartAndOffDrift;
+//            numberOfTopMPLsToTrainOnDrift = (maxNumberOfMLPsToTrainOnDrift /2);
+//            maxInstancesToTrainAtStart = 200;
+//        }else if (featureValuesArraySize > 100 ){
+//            maxNumberOfMLPsToTrainOnDrift = numberOfMPLsToTrainAtStartAndOffDrift;
+//            maxInstancesToTrainAtStart = 400;
+//            numberOfTopMPLsToTrainOnDrift = (maxNumberOfMLPsToTrainOnDrift /2);
+//        }else{
+//            maxNumberOfMLPsToTrainOnDrift = numberOfMPLsToTrainAtStartAndOffDrift;
+//            maxInstancesToTrainAtStart = 800;
+//            numberOfTopMPLsToTrainOnDrift = (maxNumberOfMLPsToTrainOnDrift /2);
+//        }
+
         numberOfMPLsToTrainAtStartAndOffDrift = 10;
-        if (featureValuesArraySize > 1000 ){
-            maxNumberOfMLPsToTrainOnDrift = numberOfMPLsToTrainAtStartAndOffDrift;
-            numberOfTopMPLsToTrainOnDrift = (maxNumberOfMLPsToTrainOnDrift /2);
-            maxInstancesToTrainAtStart = 100;
-        }else if (featureValuesArraySize > 500 ){
-            maxNumberOfMLPsToTrainOnDrift = numberOfMPLsToTrainAtStartAndOffDrift;
-            numberOfTopMPLsToTrainOnDrift = (maxNumberOfMLPsToTrainOnDrift /2);
-            maxInstancesToTrainAtStart = 200;
-        }else if (featureValuesArraySize > 100 ){
-            maxNumberOfMLPsToTrainOnDrift = numberOfMPLsToTrainAtStartAndOffDrift;
-            maxInstancesToTrainAtStart = 400;
-            numberOfTopMPLsToTrainOnDrift = (maxNumberOfMLPsToTrainOnDrift /2);
-        }else{
-            maxNumberOfMLPsToTrainOnDrift = numberOfMPLsToTrainAtStartAndOffDrift;
-            maxInstancesToTrainAtStart = 800;
-            numberOfTopMPLsToTrainOnDrift = (maxNumberOfMLPsToTrainOnDrift /2);
-        }
+        maxNumberOfMLPsToTrainOnDrift = numberOfMPLsToTrainAtStartAndOffDrift;
         numberOfTopMPLsToTrainOnDrift = maxNumberOfMLPsToTrainOnDrift;
+
+        maxInstancesToTrainAtStart = numberOfInstancesToTrainAtStartOption.getValue();
         instancesToProcessAfterADrift = 2 * (nn.length - maxNumberOfMLPsToTrainOnDrift + 1);
     }
 
