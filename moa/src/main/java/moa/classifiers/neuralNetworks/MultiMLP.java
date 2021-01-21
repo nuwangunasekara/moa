@@ -399,6 +399,7 @@ public class MultiMLP extends AbstractClassifier implements MultiClassClassifier
         for (int n=0; n < numerator.length; n++){
             for (int d=0; d < denominator.length; d++){
                 float lr = numerator[n]/denominator[d];
+                nnConfigsArrayList.add(new MLPConfigs(numberOfNeuronsIn2Power.getValue(), MLP.OPTIMIZER_SGD, lr, 1.0E-3));
                 nnConfigsArrayList.add(new MLPConfigs(numberOfNeuronsIn2Power.getValue(), MLP.OPTIMIZER_ADAM, lr, 1.0E-3));
             }
         }
