@@ -23,7 +23,7 @@ max_re_run_count=0
 
 #learner='meta.StreamingRandomPatches -s 10'
 #learner='meta.AdaptiveRandomForest -s 10 -j 10'
-learner='neuralNetworks.MultiMLP -h -n -t UseThreads'
+learner='neuralNetworks.MultiMLP -h -n -t UseThreads -o 2 -O 8 -N 11'
 # learner='lazy.kNN'
 #####################################################################################################
 
