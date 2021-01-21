@@ -23,7 +23,30 @@
 BASEDIR=`dirname $0`/..
 BASEDIR=`(cd "$BASEDIR"; pwd)`
 REPO=$BASEDIR/../../target/classes
+
+if [ $# -gt 0 ]; then
+  if [ -d "$1" ]; then
+    export DJL_CACHE_DIR=$1
+  else
+    echo "DJL_CACHE_DIR can not be set. Directory $1 is not available."
+    print_usage
+    exit 1
+  fi
+fi
+
 MAVEN_REPO="$(realpath ~)/.m2/repository"
+if [ $# -gt 1 ]; then
+  if [ -d "$2" ]; then
+    MAVEN_REPO="$2"
+    export MAVEN_OPTS="-Dmaven.repo.local=$2"
+  else
+    echo "MAVEN_OPTS=-Dmaven.repo.local can not be set. Directory $2 is not available."
+    print_usage
+    exit 1
+  fi
+fi
+
+
 JAR_PATHS="$(for j in $(find $MAVEN_REPO -name '*.jar');do printf '%s:' $j; done)"
 CLASSPATH="$JAR_PATHS$REPO/"
 JAVA_AGENT_PATH="$(find $MAVEN_REPO -name 'sizeofag-1.0.4.jar')"
