@@ -128,7 +128,8 @@ do
 
   in_file_lines=$(wc -l $in_file |awk '{print $1}')
   in_file_desc_lines=$(grep -h -n '@data' "$in_file" | awk -F ':' '{print $1}')
-  warmup_instances=$(($((in_file_lines - in_file_desc_lines -1)) /100))
+  total_number_of_instances=$((in_file_lines - in_file_desc_lines -1))
+  warmup_instances=$((total_number_of_instances /100))
   if [ $warmup_instances -gt 1000 ]; then
     warmup_instances=1000
   fi
