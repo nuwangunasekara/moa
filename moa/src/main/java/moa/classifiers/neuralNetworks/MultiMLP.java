@@ -114,6 +114,15 @@ public class MultiMLP extends AbstractClassifier implements MultiClassClassifier
             "Number of neurons in the 1st layer in 2's power",
             8, 2, 20);
 
+    public static final int DL_ENGINE_PYTORCH = 0;
+    public static final int DL_ENGINE_MXNET = 1;
+    public MultiChoiceOption deepLearningEngine = new MultiChoiceOption("deepLearningEngine", 'e',
+            "The deep learning engine",
+            new String[]{"pytorch", "mxnet"},
+            new String[]{"pytorch", "mxnet"}, DL_ENGINE_PYTORCH);
+
+    public FlagOption useAdagrad = new FlagOption("useAdagrad", 'a',
+            "Use Adagrad");
 
     @Override
     public void resetLearningImpl() {
@@ -404,7 +413,9 @@ public class MultiMLP extends AbstractClassifier implements MultiClassClassifier
                 float lr = numerator[n]/denominator[d];
                 nnConfigsArrayList.add(new MLPConfigs(numberOfNeuronsIn2Power.getValue(), MLP.OPTIMIZER_SGD, lr, 1.0E-3));
                 nnConfigsArrayList.add(new MLPConfigs(numberOfNeuronsIn2Power.getValue(), MLP.OPTIMIZER_ADAM, lr, 1.0E-3));
-//                nnConfigsArrayList.add(new MLPConfigs(numberOfNeuronsIn2Power.getValue(), MLP.OPTIMIZER_ADAGRAD, lr, 1.0E-3));
+                if ((deepLearningEngine.getChosenIndex() == DL_ENGINE_MXNET) && (useAdagrad.isSet())) {
+                    nnConfigsArrayList.add(new MLPConfigs(numberOfNeuronsIn2Power.getValue(), MLP.OPTIMIZER_ADAGRAD, lr, 1.0E-3));
+                }
             }
         }
         nnConfigs = nnConfigsArrayList.toArray(nnConfigs);
