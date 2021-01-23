@@ -25,6 +25,9 @@ max_re_run_count=0
 #learner='meta.AdaptiveRandomForest -s 10 -j 10'
 learner='neuralNetworks.MultiMLP -h -n -t UseThreads -o 2 -O 8 -N 11'
 # learner='lazy.kNN'
+
+sample_frequency=10000000
+max_instances=10000000
 #####################################################################################################
 
 if [ $# -lt 2 ]; then
@@ -143,14 +146,14 @@ do
 
   rm -f tmp_log_file
 
-  exp_cmd="moa.DoTask \"EvaluateInterleavedTestThenTrain1 -l ($learner) -s (ArffFileStream -f $in_file) -i 10000000 -f 10000000 -q 10000000 -d $out_file\" &>$tmp_log_file &"
+  exp_cmd="moa.DoTask \"EvaluateInterleavedTestThenTrain1 -l ($learner) -s (ArffFileStream -f $in_file) -i $max_instances -f $sample_frequency -q $sample_frequency -d $out_file\" &>$tmp_log_file &"
   echo -e "\n$exp_cmd\n"
   echo -e "\n$exp_cmd\n" > $tmp_log_file
 time "$JCMD" \
   -classpath "$CLASSPATH" \
   -Xmx16g -Xms50m -Xss1g \
   -javaagent:"$JAVA_AGENT_PATH" \
-  moa.DoTask "EvaluateInterleavedTestThenTrain1 -l ($learner) -s (ArffFileStream -f $in_file) -i 10000000 -f 10000000 -q 10000000 -d $out_file" &>$tmp_log_file &
+  moa.DoTask "EvaluateInterleavedTestThenTrain1 -l ($learner) -s (ArffFileStream -f $in_file) -i $max_instances -f $sample_frequency -q $sample_frequency -d $out_file" &>$tmp_log_file &
 
   if [ -z $! ]; then
     task_failed=1
