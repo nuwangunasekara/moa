@@ -37,11 +37,12 @@ public class MultiMLP extends AbstractClassifier implements MultiClassClassifier
     private FileWriter statsDumpFile;
     private BasicClassificationPerformanceEvaluator performanceEvaluator = new BasicClassificationPerformanceEvaluator();
     private int instancesToProcessSinceLastDrift = 0;
-    private long driftsDetectedPer1000Samples = 0;
+    private long driftsDetectedPerSampleFrequency = 0;
     private long lastDriftDetectedAt = 0;
-    private long learnedOnDriftsFor1000Samples = 0;
+    private long learnedOnDriftsPerSampleFrequency = 0;
     private long totalDriftsDetected = 0;
-    private long avgMLPsFor1000Samples = 0;
+    private long avgMLPsPerSampleFrequency = 0;
+    private long lastGetModelMeasurementsImplCalledAt=0
 
     private int numberOfMLPsToTrainAtStart;
     private int numberOfTopMLPsToTrainAtStart;
@@ -185,14 +186,14 @@ public class MultiMLP extends AbstractClassifier implements MultiClassClassifier
                 }else if (instancesToProcessSinceLastDrift > 0){
                     numberOfMLPsToTrain = numberOfMLPsToTrainOnDrift;
                     numberOfTopMLPsToTrain = numberOfTopMLPsToTrainOrOnDrift;
-                    learnedOnDriftsFor1000Samples++;
+                    learnedOnDriftsPerSampleFrequency++;
 //                    System.out.println("@ "+samplesSeen
-//                            +" driftsDetectedPer1000Samples : "+ driftsDetectedPer1000Samples
-//                            +" learnedOnDriftsFor1000Samples : " + learnedOnDriftsFor1000Samples
+//                            +" driftsDetectedPerSampleFrequency : "+ driftsDetectedPerSampleFrequency
+//                            +" learnedOnDriftsPerSampleFrequency : " + learnedOnDriftsPerSampleFrequency
 //                            +" numberOfMLPsToTrain : " + numberOfMLPsToTrain);
                     instancesToProcessSinceLastDrift --;
                 }
-                avgMLPsFor1000Samples += numberOfMLPsToTrain;
+                avgMLPsPerSampleFrequency += numberOfMLPsToTrain;
 
                 if (modelSelectionCriteria.getChosenIndex() == SELECT_USING_LOSS){
                     Arrays.sort(this.nn, new Comparator<MLP>() {
@@ -253,6 +254,7 @@ public class MultiMLP extends AbstractClassifier implements MultiClassClassifier
     }
 
     private void printStats(){
+        long sampleFrequency = samplesSeen - lastGetModelMeasurementsImplCalledAt;
         for (int i = 0 ; i < this.nn.length ; i++) {
             try {
                 statsDumpFile.write(samplesSeen + ","
@@ -264,9 +266,10 @@ public class MultiMLP extends AbstractClassifier implements MultiClassClassifier
                         + this.nn[i].lossEstimator.getEstimation() + ","
                         + this.nn[i].chosenCount + ","
                         + totalDriftsDetected + ","
-                        + driftsDetectedPer1000Samples + ","
-                        + learnedOnDriftsFor1000Samples + ","
-                        + avgMLPsFor1000Samples/1000 + "\n");
+                        + sampleFrequency + ","
+                        + driftsDetectedPerSampleFrequency + ","
+                        + learnedOnDriftsPerSampleFrequency + ","
+                        + avgMLPsPerSampleFrequency/sampleFrequency + "\n");
                 statsDumpFile.flush();
             } catch (IOException e) {
                 System.out.println("An error occurred.");
@@ -280,11 +283,7 @@ public class MultiMLP extends AbstractClassifier implements MultiClassClassifier
         int chosenIndex = 0;
         double [] votes;
         samplesSeen ++;
-        if( (samplesSeen % 1000) == 1){
-            driftsDetectedPer1000Samples = 0;
-            learnedOnDriftsFor1000Samples = 0;
-            avgMLPsFor1000Samples = 0;
-        }
+
         if(this.nn == null) {
             initNNs(instance);
         }else {
@@ -318,7 +317,7 @@ public class MultiMLP extends AbstractClassifier implements MultiClassClassifier
                 lastDriftDetectedAt = samplesSeen;
             }
             totalDriftsDetected++;
-            driftsDetectedPer1000Samples++;
+            driftsDetectedPerSampleFrequency++;
         }
         return votes;
     }
@@ -335,6 +334,10 @@ public class MultiMLP extends AbstractClassifier implements MultiClassClassifier
     @Override
     protected Measurement[] getModelMeasurementsImpl() {
         printStats();
+        driftsDetectedPerSampleFrequency = 0;
+        learnedOnDriftsPerSampleFrequency = 0;
+        avgMLPsPerSampleFrequency = 0;
+        lastGetModelMeasurementsImplCalledAt = samplesSeen;
 //        return new Measurement[]{
 //                new Measurement("drifts detected", driftsDetected)};
         return null;
@@ -401,6 +404,7 @@ public class MultiMLP extends AbstractClassifier implements MultiClassClassifier
                 float lr = numerator[n]/denominator[d];
                 nnConfigsArrayList.add(new MLPConfigs(numberOfNeuronsIn2Power.getValue(), MLP.OPTIMIZER_SGD, lr, 1.0E-3));
                 nnConfigsArrayList.add(new MLPConfigs(numberOfNeuronsIn2Power.getValue(), MLP.OPTIMIZER_ADAM, lr, 1.0E-3));
+//                nnConfigsArrayList.add(new MLPConfigs(numberOfNeuronsIn2Power.getValue(), MLP.OPTIMIZER_ADAGRAD, lr, 1.0E-3));
             }
         }
         nnConfigs = nnConfigsArrayList.toArray(nnConfigs);
@@ -428,9 +432,10 @@ public class MultiMLP extends AbstractClassifier implements MultiClassClassifier
                     "estimated_loss," +
                     "chosen_counts," +
                     "totalDriftsDetected," +
-                    "driftsDetectedPer1000Samples," +
-                    "learnedOnDriftsFor1000Samples," +
-                    "avgMLPsFor1000Samples" +
+                    "sampleFrequency," +
+                    "driftsDetectedPerSampleFrequency," +
+                    "learnedOnDriftsPerSampleFrequency," +
+                    "avgMLPsPerSampleFrequency" +
                     "\n");
             statsDumpFile.flush();
         } catch (IOException e) {
