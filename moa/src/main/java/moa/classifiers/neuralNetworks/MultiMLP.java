@@ -42,7 +42,7 @@ public class MultiMLP extends AbstractClassifier implements MultiClassClassifier
     private long learnedOnDriftsPerSampleFrequency = 0;
     private long totalDriftsDetected = 0;
     private long avgMLPsPerSampleFrequency = 0;
-    private long lastGetModelMeasurementsImplCalledAt=0
+    private long lastGetModelMeasurementsImplCalledAt=0;
 
     private int numberOfMLPsToTrainAtStart;
     private int numberOfTopMLPsToTrainAtStart;
