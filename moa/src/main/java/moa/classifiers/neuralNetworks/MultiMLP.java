@@ -108,11 +108,17 @@ public class MultiMLP extends AbstractClassifier implements MultiClassClassifier
             "number of MLPs to train on drift",
             10, 2, Integer.MAX_VALUE);
 
-    public IntOption numberOfNeuronsIn2Power = new IntOption(
-            "numberOfNeuronsIn2Power",
+    public IntOption numberOfNeuronsInL1InLog2 = new IntOption(
+            "numberOfNeuronsInL1InLog2",
             'N',
-            "Number of neurons in the 1st layer in 2's power",
+            "Number of neurons in the 1st layer in log2",
             8, 2, 20);
+
+    public IntOption numberOfLayers = new IntOption(
+            "numberOfLayers",
+            'L',
+            "Number of layers",
+            1, 1, 4);
 
     public static final int DL_ENGINE_PYTORCH = 0;
     public static final int DL_ENGINE_MXNET = 1;
@@ -268,7 +274,7 @@ public class MultiMLP extends AbstractClassifier implements MultiClassClassifier
             try {
                 statsDumpFile.write(samplesSeen + ","
                         + this.nn[i].samplesSeen + ","
-                        + this.nn[i].numberOfNeuronsIn2Power.getValue() +"_" + this.nn[i].optimizerTypeOption.getChosenLabel() +"_" + decimalFormat.format(this.nn[i].learningRateOption.getValue()) + "_" + this.nn[i].deltaForADWIN + ","
+                        + this.nn[i].numberOfNeuronsInL1InLog2.getValue() +"_" + this.nn[i].optimizerTypeOption.getChosenLabel() +"_" + decimalFormat.format(this.nn[i].learningRateOption.getValue()) + "_" + this.nn[i].deltaForADWIN + ","
                         + performanceEvaluator.getPerformanceMeasurements()[1].getValue() + ","
                         + this.nn[i].getAccuracy() + ","
                         + this.nn[i].accumulatedLoss/this.nn[i].samplesSeen + ","
@@ -367,13 +373,13 @@ public class MultiMLP extends AbstractClassifier implements MultiClassClassifier
 //	{'optimizer_type': OP_TYPE_ADAM_NC, 'l_rate': 0.01},
 //			]
         class MLPConfigs{
-            private final int numberOfNeuronsIn2Power;
+            private final int numberOfNeuronsInL1InLog2;
             private final int optimizerType;
             private final float learningRate;
             private final double deltaForADWIN;
 
-            MLPConfigs(int numberOfNeuronsIn2Power, int optimizerType, float learningRate, double deltaForADWIN){
-                this.numberOfNeuronsIn2Power = numberOfNeuronsIn2Power;
+            MLPConfigs(int numberOfNeuronsInL1InLog2, int optimizerType, float learningRate, double deltaForADWIN){
+                this.numberOfNeuronsInL1InLog2 = numberOfNeuronsInL1InLog2;
                 this.optimizerType = optimizerType;
                 this.learningRate = learningRate;
                 this.deltaForADWIN = deltaForADWIN;
@@ -406,15 +412,15 @@ public class MultiMLP extends AbstractClassifier implements MultiClassClassifier
         };
 
         List<MLPConfigs> nnConfigsArrayList = new ArrayList<MLPConfigs>(Arrays.asList(nnConfigs));
-        float [] denominator = {10.0f, 100.0f, 1000.0f, 10000.0f, 100000.0f};
-        float [] numerator = {1.0f, 1.25f, 2.5f, 3.75f, 5.0f, 6.25f, 7.5f};
+        float [] denominator = {100.0f, 1000.0f, 10000.0f, 100000.0f};
+        float [] numerator = {1.25f, 2.5f, 3.75f, 5.0f, 6.25f, 7.5f};
         for (int n=0; n < numerator.length; n++){
             for (int d=0; d < denominator.length; d++){
                 float lr = numerator[n]/denominator[d];
-                nnConfigsArrayList.add(new MLPConfigs(numberOfNeuronsIn2Power.getValue(), MLP.OPTIMIZER_SGD, lr, 1.0E-3));
-                nnConfigsArrayList.add(new MLPConfigs(numberOfNeuronsIn2Power.getValue(), MLP.OPTIMIZER_ADAM, lr, 1.0E-3));
+                nnConfigsArrayList.add(new MLPConfigs(numberOfNeuronsInL1InLog2.getValue(), MLP.OPTIMIZER_SGD, lr, 1.0E-3));
+                nnConfigsArrayList.add(new MLPConfigs(numberOfNeuronsInL1InLog2.getValue(), MLP.OPTIMIZER_ADAM, lr, 1.0E-3));
                 if ((deepLearningEngine.getChosenIndex() == DL_ENGINE_MXNET) && (useAdagrad.isSet())) {
-                    nnConfigsArrayList.add(new MLPConfigs(numberOfNeuronsIn2Power.getValue(), MLP.OPTIMIZER_ADAGRAD, lr, 1.0E-3));
+                    nnConfigsArrayList.add(new MLPConfigs(numberOfNeuronsInL1InLog2.getValue(), MLP.OPTIMIZER_ADAGRAD, lr, 1.0E-3));
                 }
             }
         }
@@ -427,7 +433,8 @@ public class MultiMLP extends AbstractClassifier implements MultiClassClassifier
             this.nn[i].learningRateOption.setValue(nnConfigs[i].learningRate);
             this.nn[i].useOneHotEncode.setValue(useOneHotEncode.isSet());
             this.nn[i].deviceTypeOption.setChosenIndex(deviceTypeOption.getChosenIndex());
-            this.nn[i].numberOfNeuronsIn2Power.setValue(nnConfigs[i].numberOfNeuronsIn2Power);
+            this.nn[i].numberOfNeuronsInL1InLog2.setValue(nnConfigs[i].numberOfNeuronsInL1InLog2);
+            this.nn[i].numberOfLayers.setValue(numberOfLayers.getValue());
             this.nn[i].deltaForADWIN = nnConfigs[i].deltaForADWIN;
 
             this.nn[i].initializeNetwork(instance);

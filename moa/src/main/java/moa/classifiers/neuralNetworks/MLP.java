@@ -50,6 +50,9 @@ import ai.djl.training.optimizer.Optimizer;
 
 import java.text.DecimalFormat;
 import java.lang.Math;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 
 
 public class MLP extends AbstractClassifier implements MultiClassClassifier {
@@ -93,11 +96,17 @@ public class MLP extends AbstractClassifier implements MultiClassClassifier {
 	public FlagOption useNormalization = new FlagOption("useNormalization", 'n',
 			"Normalize data");
 
-	public IntOption numberOfNeuronsIn2Power = new IntOption(
-			"numberOfNeuronsIn2Power",
+	public IntOption numberOfNeuronsInL1InLog2 = new IntOption(
+			"numberOfNeuronsInL1InLog2",
 			'N',
-			"Number of neurons in the 1st layer in 2's power",
+			"Number of neurons in the 1st layer in log2",
 			10, 2, 20);
+
+	public IntOption numberOfLayers = new IntOption(
+			"numberOfLayers",
+			'L',
+			"Number of layers",
+			1, 1, 4);
 
 	public static final int deviceTypeOptionGPU = 0;
 	public static final int deviceTypeOptionCPU = 1;
@@ -365,7 +374,13 @@ public class MLP extends AbstractClassifier implements MultiClassClassifier {
 			devices = Device.getDevices(gpuCount);
 			nnmodel = Model.newInstance("mlp", ((deviceTypeOption.getChosenIndex() == deviceTypeOptionGPU) && (gpuCount > 0)) ? Device.gpu() : Device.cpu());
 			// Construct neural network and set it in the block
-			Block block = new Mlp(featureValuesArraySize, inst.numClasses(), new int[] {(int) Math.pow(2, numberOfNeuronsIn2Power.getValue())});
+			Integer [] neuronsInEachHiddenLayer = {};
+			List<Integer> neuronsInEachHiddenLayerArrayList = new ArrayList<Integer>(Arrays.asList(neuronsInEachHiddenLayer));
+			for(int i=0; i < numberOfLayers.getValue(); i++){
+				neuronsInEachHiddenLayerArrayList.add((int) Math.pow(2, numberOfNeuronsInL1InLog2.getValue() - i));
+			}
+			neuronsInEachHiddenLayer = neuronsInEachHiddenLayerArrayList.toArray(neuronsInEachHiddenLayer);
+			Block block = new Mlp(featureValuesArraySize, inst.numClasses(), Arrays.stream(neuronsInEachHiddenLayer).mapToInt(Integer::intValue).toArray());
 //		Block block = new Mlp(featureValuesArraySize, inst.numClasses(), new int[] {2});
 			nnmodel.setBlock(block);
 			trainingNDManager = Engine.getInstance().newBaseManager(nnmodel.getNDManager().getDevice());
