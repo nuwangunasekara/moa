@@ -130,6 +130,9 @@ public class MultiMLP extends AbstractClassifier implements MultiClassClassifier
     public FlagOption useAdagrad = new FlagOption("useAdagrad", 'a',
             "Use Adagrad");
 
+    public FlagOption resetSupportedOptimizers = new FlagOption("resetSupportedOptimizers", 'r',
+            "Reset supported optimizers");
+
     @Override
     public void resetLearningImpl() {
         if (nn != null) {
@@ -418,9 +421,9 @@ public class MultiMLP extends AbstractClassifier implements MultiClassClassifier
             for (int d=0; d < denominator.length; d++){
                 float lr = numerator[n]/denominator[d];
                 nnConfigsArrayList.add(new MLPConfigs(numberOfNeuronsInL1InLog2.getValue(), MLP.OPTIMIZER_SGD, lr, 1.0E-3));
-                nnConfigsArrayList.add(new MLPConfigs(numberOfNeuronsInL1InLog2.getValue(), MLP.OPTIMIZER_ADAM, lr, 1.0E-3));
+                nnConfigsArrayList.add(new MLPConfigs(numberOfNeuronsInL1InLog2.getValue(), resetSupportedOptimizers.isSet() ? MLP.OPTIMIZER_ADAM_RESET : MLP.OPTIMIZER_ADAM, lr, 1.0E-3));
                 if ((deepLearningEngine.getChosenIndex() == DL_ENGINE_MXNET) && (useAdagrad.isSet())) {
-                    nnConfigsArrayList.add(new MLPConfigs(numberOfNeuronsInL1InLog2.getValue(), MLP.OPTIMIZER_ADAGRAD, lr, 1.0E-3));
+                    nnConfigsArrayList.add(new MLPConfigs(numberOfNeuronsInL1InLog2.getValue(), resetSupportedOptimizers.isSet() ? MLP.OPTIMIZER_ADAGRAD_RESET : MLP.OPTIMIZER_ADAGRAD, lr, 1.0E-3));
                 }
             }
         }
