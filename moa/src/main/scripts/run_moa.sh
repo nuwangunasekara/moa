@@ -24,11 +24,11 @@ max_repeat=0
 # times to re-run on failure
 max_re_run_count=0
 
-learners=('meta.StreamingRandomPatches -s 10' 'meta.AdaptiveRandomForest -s 10 -j 10' 'neuralNetworks.MultiMLP -h -n -t UseThreads -o 2 -O 8 -N 11')
-learners=('meta.StreamingRandomPatches -s 10' 'meta.AdaptiveRandomForest -s 10 -j 10' 'neuralNetworks.MultiMLP -h -n -t UseThreads -o 2 -O 8 -N 11')
+learners=('neuralNetworks.MultiMLP -h -n -t UseThreads -o 2 -O 8 -N 9' 'meta.StreamingRandomPatches -s 10' 'meta.AdaptiveRandomForest -s 10 -j 10' )
+learners=('neuralNetworks.MultiMLP -h -n -t UseThreads -o 2 -O 8 -N 9' 'meta.StreamingRandomPatches -s 10' 'meta.AdaptiveRandomForest -s 10 -j 10' )
 
-sample_frequency=10000000
-max_instances=10000000
+sample_frequency=1000000
+max_instances=1000000
 #####################################################################################################
 
 if [ $# -lt 2 ]; then
