@@ -283,6 +283,8 @@ public class MultiMLP extends AbstractClassifier implements MultiClassClassifier
                         + this.nn[i].accumulatedLoss/this.nn[i].samplesSeen + ","
                         + this.nn[i].lossEstimator.getEstimation() + ","
                         + this.nn[i].chosenCount + ","
+                        + this.nn[i].optimizerResetCount + ","
+                        + this.nn[i].modelResetCount + ","
                         + totalDriftsDetected + ","
                         + sampleFrequency + ","
                         + driftsDetectedPerSampleFrequency + ","
@@ -452,6 +454,8 @@ public class MultiMLP extends AbstractClassifier implements MultiClassClassifier
                     "avg_loss," +
                     "estimated_loss," +
                     "chosen_counts," +
+                    "optimizerResetCount" +
+                    "modelResetCount" +
                     "totalDriftsDetected," +
                     "sampleFrequency," +
                     "driftsDetectedPerSampleFrequency," +
