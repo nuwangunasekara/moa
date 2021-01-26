@@ -13,7 +13,7 @@ echo "Script pid = $SCRIPT_PID"
 # config variables
 
 #dataset=(spam_corpus WISDM_ar_v1.1_transformed elecNormNew nomao covtypeNorm kdd99 airlines RBF_f RBF_m LED_g LED_a AGR_a AGR_g)
-dataset=(RBF_f RBF_m LED_g LED_a AGR_a AGR_g)
+dataset=(RBF_f RBF_m LED_g LED_a AGR_a AGR_g spam_corpus kdd99 airlines WISDM_ar_v1.1_transformed elecNormNew nomao covtypeNorm)
 #dataset=(elecNormNew)
 
 datasets_to_repeat=(WISDM_ar_v1.1_transformed elecNormNew nomao)
@@ -23,7 +23,7 @@ max_repeat=0
 max_re_run_count=0
 
 learners=('neuralNetworks.MultiMLP -h -n -t UseThreads -o 2 -O 8 -N 9' 'meta.StreamingRandomPatches -s 10' 'meta.AdaptiveRandomForest -s 10 -j 10' )
-learners=('neuralNetworks.MultiMLP -h -n -t UseThreads -o 10 -O 10 -N 9' 'meta.StreamingRandomPatches -s 10' 'meta.AdaptiveRandomForest -s 10 -j 10' )
+learners=('neuralNetworks.MultiMLP -h -n -t UseThreads -o 2 -O 8 -N 9' 'neuralNetworks.MultiMLP -h -n -t UseThreads -o 2 -O 8 -N 11' 'neuralNetworks.MultiMLP -h -n -t UseThreads -o 10 -O 10 -N 9' 'meta.StreamingRandomPatches -s 10' 'meta.AdaptiveRandomForest -s 10 -j 10')
 
 sample_frequency=1000000
 max_instances=1000000
