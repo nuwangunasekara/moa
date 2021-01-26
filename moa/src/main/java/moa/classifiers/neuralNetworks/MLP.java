@@ -137,6 +137,7 @@ public class MLP extends AbstractClassifier implements MultiClassClassifier {
 	public float accumulatedLoss = 0;
 	public int chosenCount = 0;
 	public long modelResetCount = 0;
+	public String modelName;
 
 
 	protected Model nnmodel = null;
@@ -403,6 +404,7 @@ public class MLP extends AbstractClassifier implements MultiClassClassifier {
 			System.err.println(e);
 			e.printStackTrace();
 		}
+		modelName = "L" + numberOfLayers.getValue() + "_L1n" + numberOfNeuronsInL1InLog2.getValue() +"_" + optimizerTypeOption.getChosenLabel() +"_" + decimalFormat.format(learningRateOption.getValue()) + "_" + deltaForADWIN;
 	}
 
 	public double getLossEstimation(){
