@@ -35,6 +35,7 @@ public class MultiMLP extends AbstractClassifier implements MultiClassClassifier
     private double [] class_value = null;
     private ExecutorService exService = null;
     private FileWriter statsDumpFile;
+    private FileWriter votesDumpFile;
     private BasicClassificationPerformanceEvaluator performanceEvaluator = new BasicClassificationPerformanceEvaluator();
     private int instancesToProcessSinceLastDrift = 0;
     private long driftsDetectedPerSampleFrequency = 0;
@@ -277,7 +278,7 @@ public class MultiMLP extends AbstractClassifier implements MultiClassClassifier
             try {
                 statsDumpFile.write(samplesSeen + ","
                         + this.nn[i].samplesSeen + ","
-                        + "L" + this.nn[i].numberOfLayers.getValue() + "_L1n" + this.nn[i].numberOfNeuronsInL1InLog2.getValue() +"_" + this.nn[i].optimizerTypeOption.getChosenLabel() +"_" + decimalFormat.format(this.nn[i].learningRateOption.getValue()) + "_" + this.nn[i].deltaForADWIN + ","
+                        + this.nn[i].modelName + ","
                         + performanceEvaluator.getPerformanceMeasurements()[1].getValue() + ","
                         + this.nn[i].getAccuracy() + ","
                         + this.nn[i].accumulatedLoss/this.nn[i].samplesSeen + ","
@@ -291,6 +292,20 @@ public class MultiMLP extends AbstractClassifier implements MultiClassClassifier
                         + learnedOnDriftsPerSampleFrequency + ","
                         + avgMLPsPerSampleFrequency/sampleFrequency + "\n");
                 statsDumpFile.flush();
+            } catch (IOException e) {
+                System.out.println("An error occurred.");
+                e.printStackTrace();
+            }
+        }
+    }
+
+    private void printVotes(Instance instance){
+        for (int i = 0 ; i < this.nn.length ; i++) {
+            try {
+                statsDumpFile.write(samplesSeen + ","
+                        + this.nn[i].modelName + ","
+                        + this.nn[i].lossEstimator.getEstimation() + ","
+                        + this.nn[i].getVotesForFeatureValues(instance, featureValues) + "\n");
             } catch (IOException e) {
                 System.out.println("An error occurred.");
                 e.printStackTrace();
@@ -339,6 +354,7 @@ public class MultiMLP extends AbstractClassifier implements MultiClassClassifier
             totalDriftsDetected++;
             driftsDetectedPerSampleFrequency++;
         }
+        printVotes(instance);
         return votes;
     }
 
@@ -358,6 +374,12 @@ public class MultiMLP extends AbstractClassifier implements MultiClassClassifier
         learnedOnDriftsPerSampleFrequency = 0;
         avgMLPsPerSampleFrequency = 0;
         lastGetModelMeasurementsImplCalledAt = samplesSeen;
+        try{
+            votesDumpFile.flush();
+        }catch (IOException e) {
+            System.out.println("An error occurred.");
+            e.printStackTrace();
+        }
 //        return new Measurement[]{
 //                new Measurement("drifts detected", driftsDetected)};
         return null;
@@ -463,6 +485,14 @@ public class MultiMLP extends AbstractClassifier implements MultiClassClassifier
                     "avgMLPsPerSampleFrequency" +
                     "\n");
             statsDumpFile.flush();
+
+            votesDumpFile = new FileWriter("NN_votes.csv");
+            votesDumpFile.write("id," +
+                    "modelName," +
+                    "estimated_loss," +
+                    "votes," +
+                    "\n");
+            votesDumpFile.flush();
         } catch (IOException e) {
             System.out.println("An error occurred.");
             e.printStackTrace();
