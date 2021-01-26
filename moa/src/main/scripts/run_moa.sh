@@ -126,15 +126,8 @@ do
     task_failed=0
     echo "======================================================================================="
     echo "Dataset = ${dataset[$i]}"
-    if [[ "$learner" =~  "MultiMLP" ]]; then
-      learner_prefix="MLP"
-    fi
-    if [[ "$learner" =~  "StreamingRandomPatches" ]]; then
-      learner_prefix="SRP"
-    fi
-    if [[ "$learner" =~  "AdaptiveRandomForest" ]]; then
-      learner_prefix="ARF"
-    fi
+
+    learner_prefix="${learner// /}"
 
     in_file="${dataset_dir}/${dataset[$i]}.arff"
     out_file="${out_csv_dir}/${learner_prefix}_${dataset[$i]}.csv"
