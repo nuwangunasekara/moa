@@ -128,9 +128,19 @@ do
     task_failed=0
     echo "======================================================================================="
     echo "Dataset = ${dataset[$i]}"
+    if [[ "$learner" =~  "MultiMLP" ]]; then
+      learner_prefix="MLP"
+    fi
+    if [[ "$learner" =~  "StreamingRandomPatches" ]]; then
+      learner_prefix="SRP"
+    fi
+    if [[ "$learner" =~  "AdaptiveRandomForest" ]]; then
+      learner_prefix="ARF"
+    fi
+
     in_file="${dataset_dir}/${dataset[$i]}.arff"
-    out_file="${out_csv_dir}/${dataset[$i]}.csv"
-    tmp_log_file="${out_csv_dir}/${dataset[$i]}.log"
+    out_file="${out_csv_dir}/${learner_prefix}_${dataset[$i]}.csv"
+    tmp_log_file="${out_csv_dir}/${learner_prefix}_${dataset[$i]}.log"
 
     in_file_lines=$(wc -l $in_file |awk '{print $1}')
     in_file_desc_lines=$(grep -h -n '@data' "$in_file" | awk -F ':' '{print $1}')
