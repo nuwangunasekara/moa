@@ -305,7 +305,7 @@ public class MultiMLP extends AbstractClassifier implements MultiClassClassifier
                 statsDumpFile.write(samplesSeen + ","
                         + this.nn[i].modelName + ","
                         + this.nn[i].lossEstimator.getEstimation() + ","
-                        + this.nn[i].getVotesForFeatureValues(instance, featureValues) + "\n");
+                        + Arrays.stream(this.nn[i].getVotesForFeatureValues(instance, featureValues)).toArray() + "\n");
             } catch (IOException e) {
                 System.out.println("An error occurred.");
                 e.printStackTrace();
