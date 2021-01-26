@@ -116,6 +116,9 @@ public class MLP extends AbstractClassifier implements MultiClassClassifier {
 			new String[]{"GPU (use CPU if not available)", "CPU"},
 			deviceTypeOptionGPU);
 
+	public FlagOption resetModel = new FlagOption("resetModel", 'r',
+			"Reset the model (with weights) along with the optimizer if applicable (only for optimizers which support reset) on concept drafts");
+
 //	public FloatOption deltaForADWINOption = new FloatOption(
 //			"deltaForADWINOption",
 //			'd',
@@ -140,6 +143,7 @@ public class MLP extends AbstractClassifier implements MultiClassClassifier {
 	protected int featureValuesArraySize = 0;
 	private transient NDManager trainingNDManager;
 	private transient NDManager testingNDManager;
+	private int numberOfClasses;
 	private double [] votes;
 	private boolean resetOptimiser = false;
 //	private BasicClassificationPerformanceEvaluator performanceEvaluator = new BasicClassificationPerformanceEvaluator();
@@ -208,6 +212,9 @@ public class MLP extends AbstractClassifier implements MultiClassClassifier {
 			if (resetOptimiser && lossEstimator.getChange() && (previousLossEstimation < lossEstimator.getEstimation()) ){
 //				System.out.println("Resetting optimizer:" + optimizerTypeOption.getChosenLabel() + " learning rate: " + decimalFormat.format(learningRateOption.getValue()));
 				optimizerResetCount++;
+				if (resetModel.isSet()) {
+					setModel();
+				}
 				setTrainer();
 			}
 
@@ -372,20 +379,9 @@ public class MLP extends AbstractClassifier implements MultiClassClassifier {
 		try {
 			gpuCount = Device.getGpuCount();
 			devices = Device.getDevices(gpuCount);
-			nnmodel = Model.newInstance("mlp", ((deviceTypeOption.getChosenIndex() == deviceTypeOptionGPU) && (gpuCount > 0)) ? Device.gpu() : Device.cpu());
-			// Construct neural network and set it in the block
-			Integer [] neuronsInEachHiddenLayer = {};
-			List<Integer> neuronsInEachHiddenLayerArrayList = new ArrayList<Integer>(Arrays.asList(neuronsInEachHiddenLayer));
-			for(int i=0; i < numberOfLayers.getValue(); i++){
-				neuronsInEachHiddenLayerArrayList.add((int) Math.pow(2, numberOfNeuronsInL1InLog2.getValue() - i));
-			}
-			neuronsInEachHiddenLayer = neuronsInEachHiddenLayerArrayList.toArray(neuronsInEachHiddenLayer);
-			Block block = new Mlp(featureValuesArraySize, inst.numClasses(), Arrays.stream(neuronsInEachHiddenLayer).mapToInt(Integer::intValue).toArray());
-//		Block block = new Mlp(featureValuesArraySize, inst.numClasses(), new int[] {2});
-			nnmodel.setBlock(block);
-			trainingNDManager = Engine.getInstance().newBaseManager(nnmodel.getNDManager().getDevice());
-			testingNDManager = Engine.getInstance().newBaseManager(nnmodel.getNDManager().getDevice());
-			System.out.println("Model using Device: " + nnmodel.getNDManager().getDevice() + "Trainer using Device: " + trainingNDManager.getDevice() + "Tester using Device: " + testingNDManager.getDevice());
+
+			numberOfClasses = inst.numClasses();
+			setModel();
 
 			lossEstimator = new ADWIN(deltaForADWIN);
 //			accEstimator = new ADWIN(deltaForADWIN);
@@ -413,6 +409,30 @@ public class MLP extends AbstractClassifier implements MultiClassClassifier {
 //		return accumulatedLoss/samplesSeen;
 		return lossEstimator.getEstimation();
 	}
+
+	protected void setModel(){
+		try{
+			nnmodel = Model.newInstance("mlp", ((deviceTypeOption.getChosenIndex() == deviceTypeOptionGPU) && (gpuCount > 0)) ? Device.gpu() : Device.cpu());
+			// Construct neural network and set it in the block
+			Integer [] neuronsInEachHiddenLayer = {};
+			List<Integer> neuronsInEachHiddenLayerArrayList = new ArrayList<Integer>(Arrays.asList(neuronsInEachHiddenLayer));
+			for(int i=0; i < numberOfLayers.getValue(); i++){
+				neuronsInEachHiddenLayerArrayList.add((int) Math.pow(2, numberOfNeuronsInL1InLog2.getValue() - i));
+			}
+			neuronsInEachHiddenLayer = neuronsInEachHiddenLayerArrayList.toArray(neuronsInEachHiddenLayer);
+			Block block = new Mlp(featureValuesArraySize, numberOfClasses, Arrays.stream(neuronsInEachHiddenLayer).mapToInt(Integer::intValue).toArray());
+//		Block block = new Mlp(featureValuesArraySize, inst.numClasses(), new int[] {2});
+			nnmodel.setBlock(block);
+			trainingNDManager = Engine.getInstance().newBaseManager(nnmodel.getNDManager().getDevice());
+			testingNDManager = Engine.getInstance().newBaseManager(nnmodel.getNDManager().getDevice());
+			System.out.println("Model using Device: " + nnmodel.getNDManager().getDevice() + "Trainer using Device: " + trainingNDManager.getDevice() + "Tester using Device: " + testingNDManager.getDevice());
+
+		}catch (Exception e) {
+			System.err.println(e);
+			e.printStackTrace();
+		}
+	}
+
 	protected void setTrainer(){
 		if (trainer != null){
 			trainer.close();
