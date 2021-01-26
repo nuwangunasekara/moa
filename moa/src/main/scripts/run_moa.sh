@@ -12,8 +12,6 @@ echo "Script pid = $SCRIPT_PID"
 #####################################################################################################
 # config variables
 
-JAVA_VM_SETTINGS='-Xmx32g -Xms50m -Xss1g'
-
 #dataset=(spam_corpus WISDM_ar_v1.1_transformed elecNormNew nomao covtypeNorm kdd99 airlines RBF_f RBF_m LED_g LED_a AGR_a AGR_g)
 dataset=(RBF_f RBF_m LED_g LED_a AGR_a AGR_g)
 #dataset=(elecNormNew)
@@ -164,7 +162,7 @@ do
     echo -e "\n$exp_cmd\n" > $tmp_log_file
   time "$JCMD" \
     -classpath "$CLASSPATH" \
-    "$JAVA_VM_SETTINGS" \
+    -Xmx16g -Xms50m -Xss1g \
     -javaagent:"$JAVA_AGENT_PATH" \
     moa.DoTask "EvaluateInterleavedTestThenTrain1 -l ($learner) -s (ArffFileStream -f $in_file) -i $max_instances -f $sample_frequency -q $sample_frequency -d $out_file" &>$tmp_log_file &
 
