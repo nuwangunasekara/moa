@@ -136,6 +136,7 @@ public class MLP extends AbstractClassifier implements MultiClassClassifier {
 	public ADWIN lossEstimator;
 	public float accumulatedLoss = 0;
 	public int chosenCount = 0;
+	public long modelResetCount = 0;
 
 
 	protected Model nnmodel = null;
@@ -214,6 +215,7 @@ public class MLP extends AbstractClassifier implements MultiClassClassifier {
 				optimizerResetCount++;
 				if (resetModel.isSet()) {
 					setModel();
+					modelResetCount ++;
 				}
 				setTrainer();
 			}
