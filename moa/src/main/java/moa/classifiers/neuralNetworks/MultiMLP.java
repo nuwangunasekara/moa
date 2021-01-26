@@ -277,7 +277,7 @@ public class MultiMLP extends AbstractClassifier implements MultiClassClassifier
             try {
                 statsDumpFile.write(samplesSeen + ","
                         + this.nn[i].samplesSeen + ","
-                        + this.nn[i].numberOfNeuronsInL1InLog2.getValue() +"_" + this.nn[i].optimizerTypeOption.getChosenLabel() +"_" + decimalFormat.format(this.nn[i].learningRateOption.getValue()) + "_" + this.nn[i].deltaForADWIN + ","
+                        + "L" + this.nn[i].numberOfLayers.getValue() + "_L1n" + this.nn[i].numberOfNeuronsInL1InLog2.getValue() +"_" + this.nn[i].optimizerTypeOption.getChosenLabel() +"_" + decimalFormat.format(this.nn[i].learningRateOption.getValue()) + "_" + this.nn[i].deltaForADWIN + ","
                         + performanceEvaluator.getPerformanceMeasurements()[1].getValue() + ","
                         + this.nn[i].getAccuracy() + ","
                         + this.nn[i].accumulatedLoss/this.nn[i].samplesSeen + ","
@@ -417,8 +417,8 @@ public class MultiMLP extends AbstractClassifier implements MultiClassClassifier
         };
 
         List<MLPConfigs> nnConfigsArrayList = new ArrayList<MLPConfigs>(Arrays.asList(nnConfigs));
-        float [] denominator = {100.0f, 1000.0f, 10000.0f, 100000.0f};
-        float [] numerator = {1.25f, 2.5f, 3.75f, 5.0f, 6.25f, 7.5f};
+        float [] denominator = {10.0f, 100.0f, 1000.0f, 10000.0f};
+        float [] numerator = {1.0f, 1.25f, 2.5f, 3.75f, 5.0f, 6.25f, 7.5f};
         for (int n=0; n < numerator.length; n++){
             for (int d=0; d < denominator.length; d++){
                 float lr = numerator[n]/denominator[d];
