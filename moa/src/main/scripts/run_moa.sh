@@ -140,8 +140,11 @@ do
     if [ $warmup_instances -gt 1000 ]; then
       warmup_instances=1000
     fi
+
     if [[ "$learner" =~  "MultiMLP" ]]; then
-      learner="$learner -s $warmup_instances"
+      learner_command="$learner -s $warmup_instances"
+    else
+      learner_command="$learner"
     fi
 
     if [ -f $out_file ]; then
@@ -150,14 +153,14 @@ do
 
     rm -f tmp_log_file
 
-    exp_cmd="moa.DoTask \"EvaluateInterleavedTestThenTrain1 -l ($learner) -s (ArffFileStream -f $in_file) -i $max_instances -f $sample_frequency -q $sample_frequency -d $out_file\" &>$tmp_log_file &"
+    exp_cmd="moa.DoTask \"EvaluateInterleavedTestThenTrain1 -l ($learner_command) -s (ArffFileStream -f $in_file) -i $max_instances -f $sample_frequency -q $sample_frequency -d $out_file\" &>$tmp_log_file &"
     echo -e "\n$exp_cmd\n"
     echo -e "\n$exp_cmd\n" > $tmp_log_file
   time "$JCMD" \
     -classpath "$CLASSPATH" \
     -Xmx16g -Xms50m -Xss1g \
     -javaagent:"$JAVA_AGENT_PATH" \
-    moa.DoTask "EvaluateInterleavedTestThenTrain1 -l ($learner) -s (ArffFileStream -f $in_file) -i $max_instances -f $sample_frequency -q $sample_frequency -d $out_file" &>$tmp_log_file &
+    moa.DoTask "EvaluateInterleavedTestThenTrain1 -l ($learner_command) -s (ArffFileStream -f $in_file) -i $max_instances -f $sample_frequency -q $sample_frequency -d $out_file" &>$tmp_log_file &
 
     if [ -z $! ]; then
       task_failed=1
