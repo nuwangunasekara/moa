@@ -26,6 +26,7 @@ learners=('neuralNetworks.MultiMLP -h -n -t UseThreads -o 2 -O 8 -N 9' 'meta.Str
 learners=('neuralNetworks.MultiMLP -h -n -t UseThreads -o 2 -O 8 -N 9' 'neuralNetworks.MultiMLP -h -n -t UseThreads -o 2 -O 8 -N 11' 'meta.StreamingRandomPatches -s 10' 'meta.AdaptiveRandomForest -s 10 -j 10' 'neuralNetworks.MultiMLP -h -n -t UseThreads -o 10 -O 10 -N 9')
 
 sample_frequency=1000000
+use_10_percent_sample_frequency=0
 max_instances=1000000
 #####################################################################################################
 
@@ -137,6 +138,9 @@ do
     in_file_desc_lines=$(grep -h -n '@data' "$in_file" | awk -F ':' '{print $1}')
     total_number_of_instances=$((in_file_lines - in_file_desc_lines -1))
     warmup_instances=$((total_number_of_instances /100))
+    if [ $use_10_percent_sample_frequency -eq 1 ]; then
+      sample_frequency=$((warmup_instances * 10))
+    fi
     if [ $warmup_instances -gt 1000 ]; then
       warmup_instances=1000
     fi
