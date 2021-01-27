@@ -302,7 +302,7 @@ public class MultiMLP extends AbstractClassifier implements MultiClassClassifier
     private void printVotes(Instance instance){
         for (int i = 0 ; i < this.nn.length ; i++) {
             try {
-                statsDumpFile.write(samplesSeen + ","
+                votesDumpFile.write(samplesSeen + ","
                         + this.nn[i].modelName + ","
                         + this.nn[i].lossEstimator.getEstimation() + ","
                         + Arrays.toString(this.nn[i].getVotesForFeatureValues(instance, featureValues))
