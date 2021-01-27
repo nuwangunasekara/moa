@@ -7,6 +7,7 @@ gpu_get_driver='nvidia-smi'
 gpu_get_cuda_version='nvcc --version'
 gpu_query_compute_apps_command='nvidia-smi --query-compute-apps=gpu_bus_id,pid,used_gpu_memory,process_name --format=csv'
 gpu_query_accounted_apps_command='nvidia-smi --query-accounted-apps=gpu_bus_id,pid,gpu_utilization,mem_utilization,max_memory_usage  --format=csv'
+ssd_usage_command='if [ -d /Scratch/ng98/ ]; then echo "SSD usage: $(du -h -d 0 /Scratch/ng98/)"; else  echo "SSD usage: N/A"; fi'
 
 domain_name='cms.waikato.ac.nz'
 
@@ -34,6 +35,8 @@ print_server_info()
       ${ssh_command}  "$gpu_query_compute_apps_command" | awk -F ',' '{printf "%20s %20s %20s %20s %40s\n", " ",$1,$2,$3,$4}'
       echo "........................................................................................................................"
       ${ssh_command}  "$gpu_query_accounted_apps_command" | awk -F ',' '{printf "%20s %20s %20s %20s %20s %20s\n", " ",$1,$2,$3,$4,$5}'
+      echo "........................................................................................................................"
+      ${ssh_command}  "$ssd_usage_command"
       echo "........................................................................................................................"
     fi
   fi
