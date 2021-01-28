@@ -134,6 +134,9 @@ public class MultiMLP extends AbstractClassifier implements MultiClassClassifier
     public FlagOption resetSupportedOptimizers = new FlagOption("resetSupportedOptimizers", 'r',
             "Reset supported optimizers");
 
+    public FlagOption use05Numerator = new FlagOption("use05Numerator", 'R',
+            "Use 0.5 numerator, with different denominators for learning rate.");
+
     @Override
     public void resetLearningImpl() {
         if (nn != null) {
@@ -441,7 +444,12 @@ public class MultiMLP extends AbstractClassifier implements MultiClassClassifier
 
         List<MLPConfigs> nnConfigsArrayList = new ArrayList<MLPConfigs>(Arrays.asList(nnConfigs));
         float [] denominator = {10.0f, 100.0f, 1000.0f, 10000.0f};
-        float [] numerator = {1.0f, 1.25f, 2.5f, 3.75f, 5.0f, 6.25f, 7.5f};
+        float [] numerator;
+        if (use05Numerator.isSet()) {
+            numerator = new float [] {5.0f};
+        }else{
+            numerator = new float[] {1.0f, 1.25f, 2.5f, 3.75f, 5.0f, 6.25f, 7.5f};
+        }
         for (int n=0; n < numerator.length; n++){
             for (int d=0; d < denominator.length; d++){
                 float lr = numerator[n]/denominator[d];
