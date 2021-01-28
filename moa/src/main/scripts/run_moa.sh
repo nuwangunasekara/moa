@@ -23,7 +23,7 @@ max_repeat=0
 max_re_run_count=0
 
 learners=('neuralNetworks.MultiMLP -h -n -t UseThreads -o 2 -O 8 -N 9' 'meta.StreamingRandomPatches -s 10' 'meta.AdaptiveRandomForest -s 10 -j 10' )
-learners=('neuralNetworks.MultiMLP -h -n -t UseThreads -o 8 -O 8 -N 9' 'meta.StreamingRandomPatches -s 10' 'meta.AdaptiveRandomForest -s 10 -j 10' 'neuralNetworks.MultiMLP -h -n -t UseThreads -o 2 -O 8 -N 9' 'neuralNetworks.MultiMLP -h -n -t UseThreads -o 2 -O 8 -N 11')
+learners=('neuralNetworks.MultiMLP -h -n -t UseThreads -o 8 -O 8 -N 9 -R' 'neuralNetworks.MultiMLP -h -n -t UseThreads -o 8 -O 8 -N 9' 'meta.StreamingRandomPatches -s 10' 'meta.AdaptiveRandomForest -s 10 -j 10' 'neuralNetworks.MultiMLP -h -n -t UseThreads -o 2 -O 8 -N 9' 'neuralNetworks.MultiMLP -h -n -t UseThreads -o 2 -O 8 -N 11')
 
 sample_frequency=1000000
 use_10_percent_sample_frequency=0
