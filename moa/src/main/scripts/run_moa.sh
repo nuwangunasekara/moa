@@ -157,6 +157,14 @@ do
 
     rm -f tmp_log_file
 
+    if [ -f NN_loss.csv ]; then
+      rm -f NN_loss.csv
+    fi
+
+    if [ -f NN_votes.csv ]; then
+      rm -f NN_votes.csv
+    fi
+
     exp_cmd="moa.DoTask \"EvaluateInterleavedTestThenTrain1 -l ($learner_command) -s (ArffFileStream -f $in_file) -i $max_instances -f $sample_frequency -q $sample_frequency -d $out_file\" &>$tmp_log_file &"
     echo -e "\n$exp_cmd\n"
     echo -e "\n$exp_cmd\n" > $tmp_log_file
@@ -227,11 +235,11 @@ do
     fi
 
     if [ -f NN_loss.csv ]; then
-      mv NN_loss.csv ${dataset[$i]}_NN_loss.csv
+      mv NN_loss.csv "${learner_prefix}_${dataset[$i]}_NN_loss.csv"
     fi
 
     if [ -f NN_votes.csv ]; then
-      mv NN_votes.csv ${dataset[$i]}NN_votes.csv
+      mv NN_votes.csv "${learner_prefix}_${dataset[$i]}_NN_votes.csv"
     fi
 
     cat $tmp_log_file >> $log_file
