@@ -1,6 +1,7 @@
 package moa.classifiers.neuralNetworks;
 
 import com.github.javacliparser.FlagOption;
+import com.github.javacliparser.FloatOption;
 import com.github.javacliparser.IntOption;
 import com.github.javacliparser.MultiChoiceOption;
 import com.yahoo.labs.samoa.instances.Instance;
@@ -68,6 +69,12 @@ public class MultiMLP extends AbstractClassifier implements MultiClassClassifier
 
     public FlagOption useNormalization = new FlagOption("useNormalization", 'n',
             "Normalize data");
+
+    public FloatOption backPropLossThreshold = new FloatOption(
+            "backPropLossThreshold",
+            'b',
+            "Back propagation loss threshold",
+            0.5, 0.0, Math.pow(10,10));
 
     public static final int TRAIN_SEQUENTIAL = 0;
     public static final int TRAIN_USE_THREADS = 1;
@@ -284,6 +291,7 @@ public class MultiMLP extends AbstractClassifier implements MultiClassClassifier
             try {
                 statsDumpFile.write(samplesSeen + ","
                         + this.nn[i].samplesSeen + ","
+                        + this.nn[i].trainedCount + ","
                         + this.nn[i].modelName + ","
                         + performanceEvaluator.getPerformanceMeasurements()[1].getValue() + ","
                         + this.nn[i].getAccuracy() + ","
@@ -479,6 +487,7 @@ public class MultiMLP extends AbstractClassifier implements MultiClassClassifier
             this.nn[i].numberOfNeuronsInL1InLog2.setValue(nnConfigs[i].numberOfNeuronsInL1InLog2);
             this.nn[i].numberOfLayers.setValue(numberOfLayers.getValue());
             this.nn[i].deltaForADWIN = nnConfigs[i].deltaForADWIN;
+            this.nn[i].backPropLossThreshold.setValue(backPropLossThreshold.getValue());
 
             this.nn[i].initializeNetwork(instance);
         }
@@ -487,13 +496,14 @@ public class MultiMLP extends AbstractClassifier implements MultiClassClassifier
             statsDumpFile = new FileWriter("NN_loss.csv");
             statsDumpFile.write("id," +
                     "samplesSeenAtTrain," +
+                    "trainedCount," +
                     "optimizer_type_learning_rate_delta," +
                     "acc,model_acc," +
                     "avg_loss," +
                     "estimated_loss," +
                     "chosen_counts," +
-                    "optimizerResetCount" +
-                    "modelResetCount" +
+                    "optimizerResetCount," +
+                    "modelResetCount," +
                     "totalDriftsDetected," +
                     "sampleFrequency," +
                     "driftsDetectedPerSampleFrequency," +

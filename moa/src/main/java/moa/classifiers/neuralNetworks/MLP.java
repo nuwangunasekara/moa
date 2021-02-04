@@ -73,6 +73,7 @@ public class MLP extends AbstractClassifier implements MultiClassClassifier {
 	public static final int OPTIMIZER_ADAM_RESET = 6;
 
 	protected long samplesSeen = 0;
+	protected long trainedCount = 0;
 	protected NormalizeInfo[] normalizeInfo = null;
 
 	private float[] pFeatureValues = null;
@@ -83,6 +84,12 @@ public class MLP extends AbstractClassifier implements MultiClassClassifier {
 			'r',
 			"Learning Rate",
 			0.03, 0.0000001, 1.0);
+
+	public FloatOption backPropLossThreshold = new FloatOption(
+			"backPropLossThreshold",
+			'b',
+			"Back propagation loss threshold",
+			0.5, 0.0, Math.pow(10,10));
 
 	public MultiChoiceOption optimizerTypeOption = new MultiChoiceOption("optimizer", 'o',
 			"Choose optimizer",
@@ -199,12 +206,15 @@ public class MLP extends AbstractClassifier implements MultiClassClassifier {
 //				System.out.println("Zero loss");
 				this.lossEstimator.setInput(0.0);
 			}else{
-				try {
-					collector.backward(lossValue);
-					trainer.step(); // enforce the calculated weights
-				}catch (IllegalStateException e)
-				{
+				if (lossValue.getFloat() > backPropLossThreshold.getValue()){
+					trainedCount++;
+					try {
+						collector.backward(lossValue);
+						trainer.step(); // enforce the calculated weights
+					}catch (IllegalStateException e)
+					{
 //					trainer.step() throws above exception if all gradients are zero.
+					}
 				}
 				this.lossEstimator.setInput(lossValue.getFloat());
 			}
