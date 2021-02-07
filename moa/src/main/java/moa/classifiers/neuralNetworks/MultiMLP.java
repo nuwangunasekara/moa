@@ -320,6 +320,8 @@ public class MultiMLP extends AbstractClassifier implements MultiClassClassifier
                     votesDumpFile.write(samplesSeen + ","
                             + this.nn[i].modelName + ","
                             + this.nn[i].lossEstimator.getEstimation() + ","
+                            + instance.classValue() + ","
+                            + instance.classIndex() + ","
                             + Arrays.toString(this.nn[i].getVotesForFeatureValues(instance, featureValues))
                             + "\n");
                 } catch (IOException e) {
@@ -516,6 +518,8 @@ public class MultiMLP extends AbstractClassifier implements MultiClassClassifier
                 votesDumpFile.write("id," +
                         "modelName," +
                         "estimated_loss," +
+                        "classValue," +
+                        "classIndex," +
                         "votes," +
                         "\n");
                 votesDumpFile.flush();
