@@ -123,7 +123,7 @@ public class MLP extends AbstractClassifier implements MultiClassClassifier {
 			new String[]{"GPU (use CPU if not available)", "CPU"},
 			deviceTypeOptionGPU);
 
-	public FlagOption resetModel = new FlagOption("resetModel", 'r',
+	public FlagOption resetModel = new FlagOption("resetModel", 'R',
 			"Reset the model (with weights) along with the optimizer if applicable (only for optimizers which support reset) on concept drafts");
 
 //	public FloatOption deltaForADWINOption = new FloatOption(
