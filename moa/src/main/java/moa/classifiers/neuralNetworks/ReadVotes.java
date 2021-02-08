@@ -19,6 +19,7 @@ package moa.classifiers.neuralNetworks;
 
 
 import com.github.javacliparser.FileOption;
+import com.github.javacliparser.IntOption;
 import com.github.javacliparser.MultiChoiceOption;
 import com.yahoo.labs.samoa.instances.Instance;
 import com.yahoo.labs.samoa.instances.InstancesHeader;
@@ -40,6 +41,13 @@ public class ReadVotes extends AbstractClassifier implements MultiClassClassifie
 
     private static final long serialVersionUID = 1L;
 
+	class Ensemble {
+		String name;
+		private BasicClassificationPerformanceEvaluator evaluator = new BasicClassificationPerformanceEvaluator();
+	}
+
+	private HashMap<String, Ensemble> ensemble = null;
+
 	private long instanceID = 0;
 
 	private static final int tokenID_id = 0;
@@ -52,6 +60,7 @@ public class ReadVotes extends AbstractClassifier implements MultiClassClassifie
 	private BufferedReader inputReader = null;
 	private BasicClassificationPerformanceEvaluator performanceByMinLoss = new BasicClassificationPerformanceEvaluator();
 	private BasicClassificationPerformanceEvaluator performanceByMajorityVote = new BasicClassificationPerformanceEvaluator();
+	private double [] accumulatedVotesForMajorityVote = {};
 
 
 	public FileOption votesFileOption = new FileOption("votesFile", 'f',
@@ -64,13 +73,21 @@ public class ReadVotes extends AbstractClassifier implements MultiClassClassifie
 			new String[]{"min_loss", "majority_vote"},
 			new String[]{"min_loss", "majority_vote"}, USE_MIN_LOSS);
 
+	public IntOption numberOfLearners = new IntOption(
+			"numberOfLearners",
+			'e',
+			"Number of learners",
+			8, 1, Integer.MAX_VALUE);
+
+
+
 	static class InstanceVotes {
 		long id = 0;
 		String name = null;
 		double loss = 0.0 ;
 		double classValue = 0.0;
 		int classIndex = -1;
-		ArrayList<Double> votes;
+		double [] votes;
 
 		public InstanceVotes() {
 		}
@@ -95,36 +112,14 @@ public class ReadVotes extends AbstractClassifier implements MultiClassClassifie
 					", votes=" + votes +
 					'}';
 		}
-
-		public static int minVoteIndex(ArrayList<Double> fromVotes) {
-			int minIndex = 0;
-			for (int i = 0; i < fromVotes.size(); i++){
-				if (fromVotes.get(i) < fromVotes.get(minIndex)){
-					minIndex = i;
-				}
-			}
-			return minIndex;
-		}
 	}
-
-	public static ArrayList<Double> addVotes(ArrayList<InstanceVotes> votesForInstance) {
-		ArrayList<Double> accumulatedVotes = new ArrayList<Double>();
-		for (int i = 0; i < votesForInstance.get(0).votes.size(); i++){
-			accumulatedVotes.add(0.0);
-		}
-		for (InstanceVotes instanceVotes : votesForInstance) {
-			for (int j = 0; j < votesForInstance.get(0).votes.size(); j++) {
-				accumulatedVotes.set(j, accumulatedVotes.get(j) + instanceVotes.votes.get(j));
-			}
-		}
-		return accumulatedVotes;
-	}
-
 
 	private InstanceVotes readVotesFromLine(String inputFileLine){
 		InstanceVotes tmpInstanceVotes = new InstanceVotes();
 		StringTokenizer inputFileTokenizer = new StringTokenizer(inputFileLine, ",[]");
 		int tokenId = 0;
+		ArrayList<Double> tmpVotesArrayList = new ArrayList<Double>();
+		Double [] tmpVotesD = {};
 		while (inputFileTokenizer.hasMoreTokens())
 		{
 			String tokenStr = inputFileTokenizer.nextToken().trim();
@@ -145,17 +140,18 @@ public class ReadVotes extends AbstractClassifier implements MultiClassClassifie
 					tmpInstanceVotes.classIndex = Integer.parseInt(tokenStr);
 					break;
 				case tokenID_votesStart:
-					tmpInstanceVotes.votes = new ArrayList<Double>();
 				default:
-					tmpInstanceVotes.votes.add(Double.parseDouble(tokenStr));
+					tmpVotesArrayList.add(Double.parseDouble(tokenStr));
 					break;
 			}
 			tokenId++;
 		}
+		tmpVotesD = tmpVotesArrayList.toArray(tmpVotesD);
+		tmpInstanceVotes.votes = Stream.of(tmpVotesD).mapToDouble(Double::doubleValue).toArray();
 		return tmpInstanceVotes;
 	}
 
-	public ArrayList<InstanceVotes> readVotesForInstanceID(){
+	public ArrayList<InstanceVotes> readVotesForInstanceID(Instance inst){
 		long lineCount = 0;
 		ArrayList<InstanceVotes> votesForInstanceID = new ArrayList<InstanceVotes>();
 
@@ -163,9 +159,21 @@ public class ReadVotes extends AbstractClassifier implements MultiClassClassifie
 			String inputFileLine = inputReader.readLine();
 			while (inputFileLine != null) {
 //                System.out.println(inputFileLine);
-				votesForInstanceID.add(new InstanceVotes(readVotesFromLine(inputFileLine)));
+				InstanceVotes tmpInstVotesForSingleLearner = readVotesFromLine(inputFileLine);
+				votesForInstanceID.add(new InstanceVotes(tmpInstVotesForSingleLearner));
 				lineCount++;
-				if ( lineCount == 8 ) {
+				if (instanceID == 1){ // init each ensemble
+					ensemble.put(tmpInstVotesForSingleLearner.name, new Ensemble());
+				}
+				ensemble.get(tmpInstVotesForSingleLearner.name).evaluator.addResult(new InstanceExample(inst),tmpInstVotesForSingleLearner.votes);
+				if (lineCount == 1){
+					accumulatedVotesForMajorityVote = new double [tmpInstVotesForSingleLearner.votes.length];
+				}
+				for (int i = 0; i < accumulatedVotesForMajorityVote.length; i++){
+					double acc = ensemble.get(tmpInstVotesForSingleLearner.name).evaluator.getPerformanceMeasurements()[1].getValue();
+					accumulatedVotesForMajorityVote[i] += tmpInstVotesForSingleLearner.votes[i] * acc;
+				}
+				if ( lineCount == numberOfLearners.getValue() ) {
 					break;
 				}
 				inputFileLine = inputReader.readLine();
@@ -183,7 +191,6 @@ public class ReadVotes extends AbstractClassifier implements MultiClassClassifie
 
 	private void initReader(){
 		try {
-
 			inputReader = new BufferedReader(new FileReader(votesFileOption.getFile()));
 			//read out the header line
 			String inputFileLine = inputReader.readLine();
@@ -191,27 +198,26 @@ public class ReadVotes extends AbstractClassifier implements MultiClassClassifie
 			System.out.println(e.getMessage());
 			System.exit(1);
 		}
+		ensemble = new HashMap<String, Ensemble>();
 	}
 
 	@Override
 	public double[] getVotesForInstance(Instance inst) {
-		double [] minLossInPDouble = {};
-		Double [] minLossInDouble = {};
-
-		double [] majorityVoteLossInPDouble = {};
-		Double [] majorityVoteInDouble = {};
+		double [] votesByMinLoss;
 
 		int chosenIndex = 0;
+
 		if ( inputReader == null ){
 			initReader();
 		}
 
 		instanceID++;
 
-		ArrayList<InstanceVotes> votesForID = readVotesForInstanceID();
+		ArrayList<InstanceVotes> votesForID = readVotesForInstanceID(inst);
 		if ((instanceID != votesForID.get(0).id) || (votesForID.get(0).id != votesForID.get(votesForID.size()-1).id)){
 			System.out.println("Something wrong: " + instanceID + votesForID);
 		}
+
 		double minEstimation = Double.MAX_VALUE;
 		for (int i = 0 ; i < votesForID.size() ; i++) {
 			if (votesForID.get(i).loss < minEstimation){
@@ -219,19 +225,14 @@ public class ReadVotes extends AbstractClassifier implements MultiClassClassifie
 				chosenIndex = i;
 			}
 		}
-		minLossInDouble = votesForID.get(chosenIndex).votes.toArray(minLossInDouble); // list to array
-		minLossInPDouble = Stream.of(minLossInDouble).mapToDouble(Double::doubleValue).toArray(); // Double[] to double[]
-		performanceByMinLoss.addResult(new InstanceExample(inst), minLossInPDouble);
-
-		ArrayList<Double> addedVotes = addVotes(votesForID);
-		majorityVoteInDouble = addedVotes.toArray(majorityVoteInDouble); // list to array
-		majorityVoteLossInPDouble = Stream.of(majorityVoteInDouble).mapToDouble(Double::doubleValue).toArray(); // Double[] to double[]
-		performanceByMajorityVote.addResult(new InstanceExample(inst), majorityVoteLossInPDouble);
+		votesByMinLoss = votesForID.get(chosenIndex).votes;
+		performanceByMinLoss.addResult(new InstanceExample(inst), votesByMinLoss);
+		performanceByMajorityVote.addResult(new InstanceExample(inst), accumulatedVotesForMajorityVote);
 
 		if (votesSelectionCriteria.getChosenIndex() == USE_MIN_LOSS){
-			return minLossInPDouble;
+			return votesByMinLoss;
 		}else{
-			return majorityVoteLossInPDouble;
+			return accumulatedVotesForMajorityVote;
 		}
 	}
 
@@ -256,6 +257,7 @@ public class ReadVotes extends AbstractClassifier implements MultiClassClassifie
 
     @Override
     protected Measurement[] getModelMeasurementsImpl() {
+//		System.out.println(performanceByMinLoss.getPerformanceMeasurements()[1].getValue());
         return null;
     }
 
