@@ -170,7 +170,7 @@ public class MultiMLP extends AbstractClassifier implements MultiClassClassifier
             initNNs(instance);
         }
 
-        MLP.setFeatureValuesArray(instance, featureValues, useOneHotEncode.isSet(),false, normalizeInfo, samplesSeen);
+//        MLP.setFeatureValuesArray(instance, featureValues, useOneHotEncode.isSet(),false, normalizeInfo, samplesSeen);
         class_value[0] = instance.classValue();
 //        InstanceExample instanceExample = new InstanceExample(instance);
 

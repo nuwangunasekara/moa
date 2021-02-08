@@ -248,7 +248,7 @@ public class MLP extends AbstractClassifier implements MultiClassClassifier {
     public void trainOnInstanceImpl(Instance inst) {
 		initializeNetwork(inst);
 
-		setFeatureValuesArray(inst, pFeatureValues, useOneHotEncode.isSet(), false, normalizeInfo, samplesSeen);
+//		setFeatureValuesArray(inst, pFeatureValues, useOneHotEncode.isSet(), false, normalizeInfo, samplesSeen);
 		pClassValue[0] = inst.classValue();
 
 		trainOnFeatureValues(pFeatureValues, pClassValue/*, new InstanceExample(inst)*/);
