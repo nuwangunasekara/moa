@@ -343,6 +343,7 @@ public class MLP extends AbstractClassifier implements MultiClassClassifier {
 		for(int i=0; i < inst.numInputAttributes(); i++){
 			int index = i + totalOneHotEncodedSize - totalOneHotEncodedInstances;
 			if (useOneHotEncoding && inst.attribute(i).isNominal() && (inst.attribute(i).numValues() > 2) ){
+				// Do one hot-encoding
 				featureValuesArrayToSet[index + (int)inst.value(i)] = 1.0f;
 				totalOneHotEncodedSize += inst.attribute(i).numValues();
 				totalOneHotEncodedInstances ++;
