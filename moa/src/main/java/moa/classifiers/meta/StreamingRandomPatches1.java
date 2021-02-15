@@ -169,15 +169,15 @@ public class StreamingRandomPatches1 extends AbstractClassifier implements Multi
 
     @Override
     public double[] getVotesForInstance(Instance instance) {
-        Instance testInstance = instance.copy();
-        testInstance.setMissing(instance.classAttribute());
-        testInstance.setClassValue(0.0);
+        //Instance testInstance = instance.copy();
+        //testInstance.setMissing(instance.classAttribute());
+        //testInstance.setClassValue(0.0);
         if(this.ensemble == null)
-            initEnsemble(testInstance);
+            initEnsemble(instance);
         DoubleVector combinedVote = new DoubleVector();
 
         for(int i = 0 ; i < this.ensemble.length ; ++i) {
-            DoubleVector vote = new DoubleVector(this.ensemble[i].getVotesForInstance(testInstance));
+            DoubleVector vote = new DoubleVector(this.ensemble[i].getVotesForInstance(instance));
             if (vote.sumOfValues() > 0.0) {
                 vote.normalize();
                 double acc = this.ensemble[i].evaluator.getPerformanceMeasurements()[1].getValue();
