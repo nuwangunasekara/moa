@@ -89,7 +89,7 @@ public class MLP extends AbstractClassifier implements MultiClassClassifier {
 			"backPropLossThreshold",
 			'b',
 			"Back propagation loss threshold",
-			0.5, 0.0, Math.pow(10,10));
+			0.0, 0.0, Math.pow(10,10));
 
 	public MultiChoiceOption optimizerTypeOption = new MultiChoiceOption("optimizer", 'o',
 			"Choose optimizer",

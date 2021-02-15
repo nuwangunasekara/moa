@@ -74,7 +74,7 @@ public class MultiMLP extends AbstractClassifier implements MultiClassClassifier
             "backPropLossThreshold",
             'b',
             "Back propagation loss threshold",
-            0.5, 0.0, Math.pow(10,10));
+            0.0, 0.0, Math.pow(10,10));
 
     public static final int TRAIN_SEQUENTIAL = 0;
     public static final int TRAIN_USE_THREADS = 1;
