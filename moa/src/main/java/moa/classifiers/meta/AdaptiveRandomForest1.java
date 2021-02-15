@@ -129,7 +129,11 @@ public class AdaptiveRandomForest1 extends AbstractClassifier implements MultiCl
 
     public FlagOption disableBackgroundLearnerOption = new FlagOption("disableBackgroundLearner", 'q', 
         "Should use bkg learner? If disabled then reset tree immediately.");
-    
+
+    public IntOption randomSeedOption = new IntOption(
+            "RandomSeed", 'r',
+            "Random seed for random number generation.", 1);
+
     protected static final int FEATURES_M = 0;
     protected static final int FEATURES_SQRT = 1;
     protected static final int FEATURES_SQRT_INV = 2;
@@ -235,6 +239,7 @@ public class AdaptiveRandomForest1 extends AbstractClassifier implements MultiCl
 
     protected void initEnsemble(Instance instance) {
         // Init the ensemble.
+        this.classifierRandom.setSeed(randomSeedOption.getValue());
         int ensembleSize = this.ensembleSizeOption.getValue();
         this.ensemble = new ARFBaseLearner[ensembleSize];
         
