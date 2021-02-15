@@ -118,6 +118,10 @@ public class StreamingRandomPatches1 extends AbstractClassifier implements Multi
     public FlagOption disableBackgroundLearnerOption = new FlagOption("disableBackgroundLearner", 'q',
             "Should use bkg learner? If disabled, then trees are reset immediately.");
 
+    public IntOption randomSeedOption = new IntOption(
+            "RandomSeed", 'r',
+            "Random seed for random number generation.", 1);
+
     public static final int TRAIN_RANDOM_SUBSPACES = 0;
     public static final int TRAIN_RESAMPLING = 1;
     public static final int TRAIN_RANDOM_PATCHES = 2;
@@ -206,6 +210,7 @@ public class StreamingRandomPatches1 extends AbstractClassifier implements Multi
         // Init the ensemble.
         int ensembleSize = this.ensembleSizeOption.getValue();
         this.ensemble = new StreamingRandomPatchesClassifier[ensembleSize];
+        this.classifierRandom.setSeed(randomSeedOption.getValue());
 
         BasicClassificationPerformanceEvaluator classificationEvaluator = new BasicClassificationPerformanceEvaluator();
 
