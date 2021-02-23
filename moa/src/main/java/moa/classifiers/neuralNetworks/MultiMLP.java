@@ -116,11 +116,11 @@ public class MultiMLP extends AbstractClassifier implements MultiClassClassifier
             "number of MLPs to train on drift",
             10, 2, Integer.MAX_VALUE);
 
-    public IntOption numberOfNeuronsInL1InLog2 = new IntOption(
-            "numberOfNeuronsInL1InLog2",
-            'N',
-            "Number of neurons in the 1st layer in log2",
-            8, 2, 20);
+//    public IntOption numberOfNeuronsInL1InLog2 = new IntOption(
+//            "numberOfNeuronsInL1InLog2",
+//            'N',
+//            "Number of neurons in the 1st layer in log2",
+//            8, 2, 20);
 
     public IntOption numberOfLayers = new IntOption(
             "numberOfLayers",
@@ -460,7 +460,7 @@ public class MultiMLP extends AbstractClassifier implements MultiClassClassifier
         };
 
         List<MLPConfigs> nnConfigsArrayList = new ArrayList<MLPConfigs>(Arrays.asList(nnConfigs));
-        float [] denominator = {10.0f, 100.0f, 1000.0f, 10000.0f};
+        float [] denominator = {10.0f, 100.0f, 1000.0f, 10000.0f, 100000.0f};
         float [] numerator;
         if (use05Numerator.isSet()) {
             numerator = new float [] {5.0f};
@@ -470,10 +470,12 @@ public class MultiMLP extends AbstractClassifier implements MultiClassClassifier
         for (int n=0; n < numerator.length; n++){
             for (int d=0; d < denominator.length; d++){
                 float lr = numerator[n]/denominator[d];
-                nnConfigsArrayList.add(new MLPConfigs(numberOfNeuronsInL1InLog2.getValue(), MLP.OPTIMIZER_SGD, lr, 1.0E-3));
-                nnConfigsArrayList.add(new MLPConfigs(numberOfNeuronsInL1InLog2.getValue(), resetSupportedOptimizers.isSet() ? MLP.OPTIMIZER_ADAM_RESET : MLP.OPTIMIZER_ADAM, lr, 1.0E-3));
-                if ((deepLearningEngine.getChosenIndex() == DL_ENGINE_MXNET) && (useAdagrad.isSet())) {
-                    nnConfigsArrayList.add(new MLPConfigs(numberOfNeuronsInL1InLog2.getValue(), resetSupportedOptimizers.isSet() ? MLP.OPTIMIZER_ADAGRAD_RESET : MLP.OPTIMIZER_ADAGRAD, lr, 1.0E-3));
+                for (int numberOfNeuronsInL1InLog2 = 8; numberOfNeuronsInL1InLog2 < 11; numberOfNeuronsInL1InLog2++){
+                    nnConfigsArrayList.add(new MLPConfigs(numberOfNeuronsInL1InLog2, MLP.OPTIMIZER_SGD, lr, 1.0E-3));
+                    nnConfigsArrayList.add(new MLPConfigs(numberOfNeuronsInL1InLog2, resetSupportedOptimizers.isSet() ? MLP.OPTIMIZER_ADAM_RESET : MLP.OPTIMIZER_ADAM, lr, 1.0E-3));
+                    if ((deepLearningEngine.getChosenIndex() == DL_ENGINE_MXNET) && (useAdagrad.isSet())) {
+                        nnConfigsArrayList.add(new MLPConfigs(numberOfNeuronsInL1InLog2, resetSupportedOptimizers.isSet() ? MLP.OPTIMIZER_ADAGRAD_RESET : MLP.OPTIMIZER_ADAGRAD, lr, 1.0E-3));
+                    }
                 }
             }
         }

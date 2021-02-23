@@ -14,7 +14,8 @@ echo "Script pid = $SCRIPT_PID"
 
 #dataset=(spam_corpus WISDM_ar_v1.1_transformed elecNormNew nomao covtypeNorm kdd99 airlines RBF_f RBF_m LED_g LED_a AGR_a AGR_g)
 dataset=(RBF_f RBF_m LED_g LED_a AGR_a AGR_g spam_corpus kdd99 airlines WISDM_ar_v1.1_transformed elecNormNew nomao covtypeNorm)
-dataset=(RBF_f RBF_m LED_g LED_a AGR_a AGR_g spam_corpus kdd99 airlines WISDM_ar_v1.1_transformed elecNormNew nomao covtypeNorm real-sim.libsvm.class_Nominal_sparse SVHN.scale.t.libsvm.sparse_class_Nominal sector.scale.libsvm.class_Nominal_sparse rcv1_train.binary_class_Nominal rcv1_train.multiclass_class_Nominal.arff gisette_scale_class_Nominal epsilon_normalized.t_class_Nominal)
+#dataset=(RBF_f RBF_m LED_g LED_a AGR_a AGR_g spam_corpus kdd99 airlines WISDM_ar_v1.1_transformed elecNormNew nomao covtypeNorm real-sim.libsvm.class_Nominal_sparse SVHN.scale.t.libsvm.sparse_class_Nominal sector.scale.libsvm.class_Nominal_sparse gisette_scale_class_Nominal epsilon_normalized.t_class_Nominal rcv1_train.binary_class_Nominal)
+dataset=(RBF_f RBF_m LED_g LED_a AGR_a AGR_g spam_corpus kdd99 airlines WISDM_ar_v1.1_transformed elecNormNew nomao covtypeNorm real-sim.libsvm.class_Nominal_sparse SVHN.scale.t.libsvm.sparse_class_Nominal sector.scale.libsvm.class_Nominal_sparse gisette_scale_class_Nominal epsilon_normalized.t_class_Nominal)
 
 datasets_to_repeat=(WISDM_ar_v1.1_transformed elecNormNew nomao)
 max_repeat=0
@@ -27,6 +28,7 @@ max_re_run_count=0
 learners=('neuralNetworks.MultiMLP -h -n -t UseThreads -o 2 -O 8 -N 9' 'meta.StreamingRandomPatches1 -s 10' 'meta.AdaptiveRandomForest1 -s 10 -j 10' )
 learners=('neuralNetworks.MultiMLP -h -n -t UseThreads -o 8 -O 8 -N 9 -R' 'neuralNetworks.MultiMLP -h -n -t UseThreads -o 8 -O 8 -N 9' 'meta.StreamingRandomPatches1 -s 10' 'meta.AdaptiveRandomForest1 -s 10 -j 10' 'neuralNetworks.MultiMLP -h -n -t UseThreads -o 2 -O 8 -N 9' 'neuralNetworks.MultiMLP -h -n -t UseThreads -o 2 -O 8 -N 11')
 learners=('meta.AdaptiveRandomForest1 -s 10 -j 10' 'meta.StreamingRandomPatches1 -s 10' 'neuralNetworks.MultiMLP -h -n -t UseThreads -o 8 -O 8 -N 9 -b 0.0' 'neuralNetworks.MultiMLP -h -n -t UseThreads -o 8 -O 8 -N 9 -b 0.6')
+learners=('neuralNetworks.MultiMLP -h -n -t UseThreads -o 10 -O 10 -b 0.0 -R' 'neuralNetworks.MultiMLP -h -n -t UseThreads -o 10 -O 10 -b 0.6 -R' 'meta.AdaptiveRandomForest1 -s 10 -j 10' 'meta.StreamingRandomPatches1 -s 10')
 
 sample_frequency=1000000
 use_10_percent_sample_frequency=0
@@ -177,7 +179,7 @@ do
     echo -e "\n$exp_cmd\n" > $tmp_log_file
   time "$JCMD" \
     -classpath "$CLASSPATH" \
-    -Xmx16g -Xms50m -Xss1g \
+    -Xmx32g -Xms50m -Xss1g \
     -javaagent:"$JAVA_AGENT_PATH" \
     moa.DoTask "EvaluateInterleavedTestThenTrain1 -l ($learner_command) -s (ArffFileStream -f $in_file) -i $max_instances -f $sample_frequency -q $sample_frequency -d $out_file" &>$tmp_log_file &
 
