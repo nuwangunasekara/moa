@@ -10,6 +10,12 @@ gpu_query_accounted_apps_command='nvidia-smi --query-accounted-apps=gpu_bus_id,p
 ssd_usage_command='if [ -d /Scratch/ng98/ ]; then echo "SSD usage: $(du -h -d 0 /Scratch/ng98/)"; else  echo "SSD usage: N/A"; fi'
 
 domain_name='cms.waikato.ac.nz'
+show_gpu="do_not_show_gpu"
+if [ $# -gt 1 ]; then
+  if [ "$2" == "show_gpu" ]; then
+    show_gpu="show_gpu"
+  fi
+fi
 
 print_server_info()
 {
@@ -44,29 +50,34 @@ print_server_info()
 
 if [ $# -gt 0 ]; then
   if [ "$1" == "local" ]; then
-    print_server_info "$1" show_gpu
+    print_server_info "$1" $show_gpu
     exit 0
   else
-    print_server_info "$1" show_gpu
+    print_server_info "$1" $show_gpu
     exit 0
   fi
 fi
 
-echo -e "\nServers with up to one GPU, all with 64 CPU RAM:\n"
+echo -e "\nServers with more than 1 GPU with NVLink, all with 64BB CPU RAM:\n"
 for i in duet quartet quatern;
 do
-  print_server_info "${i}.${domain_name}" show_gpu
+  print_server_info "${i}.${domain_name}" $show_gpu
 done
 
-
-echo -e "\nServers with up to one GPU, all with 64 CPU RAM:\n"
-for i in $(seq 11 25);
+echo -e "\nServers with NO GPU, all with 64GB CPU RAM:\n"
+for i in $(seq 11 12);
 do
-  print_server_info "ml-${i}.${domain_name}" show_gpu
+  print_server_info "ml-${i}.${domain_name}" $show_gpu
 done
 
-echo -e "\nOld ML servers, somewhat slower, no GPUs, 16GB of RAM:\n"
-for i in 21 31 33 35;
+echo -e "\nServers with up to 1 GPU, all with 64 CPU RAM:\n"
+for i in $(seq 13 25);
+do
+  print_server_info "ml-${i}.${domain_name}" $show_gpu
+done
+
+echo -e "\nOld ML servers, somewhat slower, NO GPUs, 16GB of RAM:\n"
+for i in 20 21 24 25 27 28 29 31 32 33 34 35;
 do
   print_server_info "ml64-${i}.${domain_name}"
 done
