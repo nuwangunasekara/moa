@@ -319,6 +319,7 @@ public class MultiMLP extends AbstractClassifier implements MultiClassClassifier
                 try {
                     votesDumpFile.write(samplesSeen + ","
                             + this.nn[i].modelName + ","
+                            + this.nn[i].accumulatedLoss/this.nn[i].samplesSeen + ","
                             + this.nn[i].lossEstimator.getEstimation() + ","
                             + instance.classValue() + ","
                             + instance.classIndex() + ","
@@ -519,6 +520,7 @@ public class MultiMLP extends AbstractClassifier implements MultiClassClassifier
                 votesDumpFile = new FileWriter("NN_votes.csv");
                 votesDumpFile.write("id," +
                         "modelName," +
+                        "point_wise_avg_loss," +
                         "estimated_loss," +
                         "classValue," +
                         "classIndex," +
