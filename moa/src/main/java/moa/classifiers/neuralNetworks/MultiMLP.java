@@ -147,6 +147,17 @@ public class MultiMLP extends AbstractClassifier implements MultiClassClassifier
     public FlagOption dumpVotes = new FlagOption("dumpVotes", 'V',
             "Dump votes to NN_votes.csv file.");
 
+    public static final int LARGER_P_POOL_10 = 0;
+    public static final int LARGER_P_POOL_30 = 1;
+
+    public MultiChoiceOption largerPPool = new MultiChoiceOption("largerPPool", 'P',
+        "The larger P pool",
+        new String[]{"P10", "P30"},
+        new String[]{
+                "P10 = { learning rates: 5.0E-(1 to 5), optimizes: SGD,Adam, neurons in 1st layer:  2^(8 to 10) }",
+                "P30 = { learning rates: 5.0E-(1 to 5), optimizes: Adam, neurons in 1st layer:  2^9 }"},
+        LARGER_P_POOL_30);
+
     @Override
     public void resetLearningImpl() {
         if (nn != null) {
@@ -472,7 +483,16 @@ public class MultiMLP extends AbstractClassifier implements MultiClassClassifier
             for (int d=0; d < denominator.length; d++){
                 float lr = numerator[n]/denominator[d];
                 for (int numberOfNeuronsInL1InLog2 = 8; numberOfNeuronsInL1InLog2 < 11; numberOfNeuronsInL1InLog2++){
-                    nnConfigsArrayList.add(new MLPConfigs(numberOfNeuronsInL1InLog2, MLP.OPTIMIZER_SGD, lr, 1.0E-3));
+
+                    if (largerPPool.getChosenIndex() == LARGER_P_POOL_30) {
+                        nnConfigsArrayList.add(new MLPConfigs(numberOfNeuronsInL1InLog2, MLP.OPTIMIZER_SGD, lr, 1.0E-3));
+                    }else{ // LARGER_P_POOL_10
+                        if ( numberOfNeuronsInL1InLog2 == 9){
+                            continue;
+                        }else{
+                            // numberOfNeuronsInL1InLog2 = 8 or 10
+                        }
+                    }
                     nnConfigsArrayList.add(new MLPConfigs(numberOfNeuronsInL1InLog2, resetSupportedOptimizers.isSet() ? MLP.OPTIMIZER_ADAM_RESET : MLP.OPTIMIZER_ADAM, lr, 1.0E-3));
                     if ((deepLearningEngine.getChosenIndex() == DL_ENGINE_MXNET) && (useAdagrad.isSet())) {
                         nnConfigsArrayList.add(new MLPConfigs(numberOfNeuronsInL1InLog2, resetSupportedOptimizers.isSet() ? MLP.OPTIMIZER_ADAGRAD_RESET : MLP.OPTIMIZER_ADAGRAD, lr, 1.0E-3));

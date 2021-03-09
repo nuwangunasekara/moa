@@ -29,6 +29,7 @@ learners=('neuralNetworks.MultiMLP -h -n -t UseThreads -o 2 -O 8 -N 9' 'meta.Str
 learners=('neuralNetworks.MultiMLP -h -n -t UseThreads -o 8 -O 8 -N 9 -R' 'neuralNetworks.MultiMLP -h -n -t UseThreads -o 8 -O 8 -N 9' 'meta.StreamingRandomPatches1 -s 10' 'meta.AdaptiveRandomForest1 -s 10 -j 10' 'neuralNetworks.MultiMLP -h -n -t UseThreads -o 2 -O 8 -N 9' 'neuralNetworks.MultiMLP -h -n -t UseThreads -o 2 -O 8 -N 11')
 learners=('meta.AdaptiveRandomForest1 -s 10 -j 10' 'meta.StreamingRandomPatches1 -s 10' 'neuralNetworks.MultiMLP -h -n -t UseThreads -o 8 -O 8 -N 9 -b 0.0' 'neuralNetworks.MultiMLP -h -n -t UseThreads -o 8 -O 8 -N 9 -b 0.6')
 learners=('neuralNetworks.MultiMLP -h -n -t UseThreads -o 10 -O 10 -b 0.0 -R' 'neuralNetworks.MultiMLP -h -n -t UseThreads -o 10 -O 10 -b 0.6 -R' 'meta.AdaptiveRandomForest1 -s 10 -j 10' 'meta.StreamingRandomPatches1 -s 10')
+learners=('neuralNetworks.MultiMLP -h -n -t UseThreads -o 10 -O 10 -b 0.0 -R -P P10' 'neuralNetworks.MultiMLP -h -n -t UseThreads -o 10 -O 10 -b 0.6 -R -P P10' 'meta.AdaptiveRandomForest1 -s 10 -j 10 -m 10' 'meta.StreamingRandomPatches1 -s 10 -m 10')
 
 sample_frequency=1000000
 use_10_percent_sample_frequency=0
