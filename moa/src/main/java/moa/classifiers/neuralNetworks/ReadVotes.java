@@ -19,7 +19,6 @@ package moa.classifiers.neuralNetworks;
 
 
 import com.github.javacliparser.FileOption;
-import com.github.javacliparser.IntOption;
 import com.github.javacliparser.MultiChoiceOption;
 import com.yahoo.labs.samoa.instances.Instance;
 import com.yahoo.labs.samoa.instances.InstancesHeader;
@@ -32,7 +31,8 @@ import moa.core.Measurement;
 import moa.evaluation.BasicClassificationPerformanceEvaluator;
 
 import java.io.BufferedReader;
-import java.io.FileReader;
+import java.io.FileInputStream;
+import java.io.InputStreamReader;
 import java.util.*;
 import java.util.stream.Stream;
 
@@ -52,14 +52,17 @@ public class ReadVotes extends AbstractClassifier implements MultiClassClassifie
 
 	private static final int tokenID_id = 0;
 	private static final int tokenID_modelName = 1;
-	private static final int tokenID_estimateLoss = 2;
-	private static final int tokenID_classValue = 3;
-	private static final int tokenID_classIndex = 4;
-	private static final int tokenID_votesStart = 5;
+	private static final int tokenID_point_wise_avg_loss = 2;
+	private static final int tokenID_estimated_loss = 3;
+	private static final int tokenID_classValue = 4;
+	private static final int tokenID_classIndex = 5;
+	private static final int tokenID_votesStart = 6;
 
+	FileInputStream fileInputStream = null;
 	private BufferedReader inputReader = null;
 	private BasicClassificationPerformanceEvaluator performanceByMinLoss = new BasicClassificationPerformanceEvaluator();
 	private BasicClassificationPerformanceEvaluator performanceByMajorityVote = new BasicClassificationPerformanceEvaluator();
+	private BasicClassificationPerformanceEvaluator performanceIfClassLabelKnownAhead = new BasicClassificationPerformanceEvaluator();
 	private double [] accumulatedVotesForMajorityVote = {};
 
 
@@ -73,18 +76,13 @@ public class ReadVotes extends AbstractClassifier implements MultiClassClassifie
 			new String[]{"min_loss", "majority_vote"},
 			new String[]{"min_loss", "majority_vote"}, USE_MIN_LOSS);
 
-	public IntOption numberOfLearners = new IntOption(
-			"numberOfLearners",
-			'e',
-			"Number of learners",
-			8, 1, Integer.MAX_VALUE);
-
-
+	private int mlpCount = 0;
 
 	static class InstanceVotes {
 		long id = 0;
 		String name = null;
-		double loss = 0.0 ;
+		double pointWiseAvgLoss = 0.0 ;
+		double estimatedLoss = 0.0 ;
 		double classValue = 0.0;
 		int classIndex = -1;
 		double [] votes;
@@ -95,7 +93,8 @@ public class ReadVotes extends AbstractClassifier implements MultiClassClassifie
 		public InstanceVotes(InstanceVotes from) {
 			this.id = from.id;
 			this.name = from.name;
-			this.loss = from.loss;
+			this.pointWiseAvgLoss = from.pointWiseAvgLoss;
+			this.estimatedLoss = from.estimatedLoss;
 			this.classValue = from.classValue;
 			this.classIndex = from.classIndex;
 			this.votes = from.votes;
@@ -106,7 +105,8 @@ public class ReadVotes extends AbstractClassifier implements MultiClassClassifie
 			return "InstanceVotes{" +
 					"id=" + id +
 					", name='" + name + '\'' +
-					", loss=" + loss +
+					", pointWiseAvgLoss=" + pointWiseAvgLoss +
+					", estimatedLoss=" + estimatedLoss +
 					", classValue=" + classValue +
 					", classIndex=" + classIndex +
 					", votes=" + votes +
@@ -130,8 +130,11 @@ public class ReadVotes extends AbstractClassifier implements MultiClassClassifie
 				case tokenID_modelName:
 					tmpInstanceVotes.name = tokenStr;
 					break;
-				case tokenID_estimateLoss:
-					tmpInstanceVotes.loss = Double.parseDouble(tokenStr);
+				case tokenID_point_wise_avg_loss:
+					tmpInstanceVotes.pointWiseAvgLoss = Double.parseDouble(tokenStr);
+					break;
+				case tokenID_estimated_loss:
+					tmpInstanceVotes.estimatedLoss = Double.parseDouble(tokenStr);
 					break;
 				case tokenID_classValue:
 					tmpInstanceVotes.classValue = Double.parseDouble(tokenStr);
@@ -173,7 +176,7 @@ public class ReadVotes extends AbstractClassifier implements MultiClassClassifie
 					double acc = ensemble.get(tmpInstVotesForSingleLearner.name).evaluator.getPerformanceMeasurements()[1].getValue();
 					accumulatedVotesForMajorityVote[i] += tmpInstVotesForSingleLearner.votes[i] * acc;
 				}
-				if ( lineCount == numberOfLearners.getValue() ) {
+				if ( lineCount == mlpCount ) {
 					break;
 				}
 				inputFileLine = inputReader.readLine();
@@ -191,9 +194,27 @@ public class ReadVotes extends AbstractClassifier implements MultiClassClassifie
 
 	private void initReader(){
 		try {
-			inputReader = new BufferedReader(new FileReader(votesFileOption.getFile()));
-			//read out the header line
+			fileInputStream = new FileInputStream(votesFileOption.getFile());
+			inputReader = new BufferedReader(new InputStreamReader(fileInputStream));
+
+			// read out the header line
 			String inputFileLine = inputReader.readLine();
+			// read out next line
+			inputFileLine = inputReader.readLine();
+			while (inputFileLine != null) {
+				InstanceVotes tmpInstVotesForSingleLearner = readVotesFromLine(inputFileLine);
+				inputFileLine = inputReader.readLine();
+				if (tmpInstVotesForSingleLearner.id > 1){ // new instance id
+					break;
+				}
+				mlpCount++;
+			}
+			// rewind the file position to the start of the file
+			fileInputStream.getChannel().position(0);
+			inputReader = new BufferedReader(new InputStreamReader(fileInputStream));
+
+			// read out the header line again
+			inputFileLine = inputReader.readLine();
 		} catch (Exception e) {
 			System.out.println(e.getMessage());
 			System.exit(1);
@@ -205,7 +226,8 @@ public class ReadVotes extends AbstractClassifier implements MultiClassClassifie
 	public double[] getVotesForInstance(Instance inst) {
 		double [] votesByMinLoss;
 
-		int chosenIndex = 0;
+		int chosenIndexByMinLoss = 0;
+		int chosenIndexIfClassLabelKnownAhead = 0;
 
 		if ( inputReader == null ){
 			initReader();
@@ -219,15 +241,21 @@ public class ReadVotes extends AbstractClassifier implements MultiClassClassifie
 		}
 
 		double minEstimation = Double.MAX_VALUE;
+		double maxPobaForClassIndex = Double.MIN_VALUE;
 		for (int i = 0 ; i < votesForID.size() ; i++) {
-			if (votesForID.get(i).loss < minEstimation){
-				minEstimation = votesForID.get(i).loss;
-				chosenIndex = i;
+			if (votesForID.get(i).estimatedLoss < minEstimation){
+				minEstimation = votesForID.get(i).estimatedLoss;
+				chosenIndexByMinLoss = i;
+			}
+
+			if (maxPobaForClassIndex < votesForID.get(i).votes[(int)inst.classValue()]){
+				chosenIndexIfClassLabelKnownAhead = i;
 			}
 		}
-		votesByMinLoss = votesForID.get(chosenIndex).votes;
+		votesByMinLoss = votesForID.get(chosenIndexByMinLoss).votes;
 		performanceByMinLoss.addResult(new InstanceExample(inst), votesByMinLoss);
 		performanceByMajorityVote.addResult(new InstanceExample(inst), accumulatedVotesForMajorityVote);
+		performanceIfClassLabelKnownAhead.addResult(new InstanceExample(inst), votesForID.get(chosenIndexIfClassLabelKnownAhead).votes);
 
 		if (votesSelectionCriteria.getChosenIndex() == USE_MIN_LOSS){
 			return votesByMinLoss;
@@ -257,7 +285,34 @@ public class ReadVotes extends AbstractClassifier implements MultiClassClassifie
 
     @Override
     protected Measurement[] getModelMeasurementsImpl() {
-//		System.out.println(performanceByMinLoss.getPerformanceMeasurements()[1].getValue());
+		double bestAcc = Double.MIN_VALUE;
+		String bestMLP = null;
+		for (Map.Entry<String, Ensemble> e : ensemble.entrySet()){
+			String key = e.getKey();
+			double acc = e.getValue().evaluator.getPerformanceMeasurements()[1].getValue();
+//			System.out.println("Key: " + e.getKey()
+//					+ " Value: " + e.getValue()
+//					+"Acc:" + acc);
+			if (bestAcc < acc){
+				bestAcc = acc;
+				bestMLP = key;
+			}
+		}
+
+
+		System.out.println("MinEstimatedLoss," +
+				"MajorityVote," +
+				"BestMLP," +
+				"BestMLPAcc," +
+				"IfClassLabelKnownAhead");
+
+		System.out.println(performanceByMinLoss.getPerformanceMeasurements()[1].getValue() + "," +
+				performanceByMajorityVote.getPerformanceMeasurements()[1].getValue() + "," +
+				bestMLP + "," +
+				ensemble.get(bestMLP).evaluator.getPerformanceMeasurements()[1].getValue() + "," +
+				performanceIfClassLabelKnownAhead.getPerformanceMeasurements()[1].getValue());
+
+
         return null;
     }
 
