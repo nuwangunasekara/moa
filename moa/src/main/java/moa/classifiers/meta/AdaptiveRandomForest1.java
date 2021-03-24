@@ -18,6 +18,12 @@
  */
 package moa.classifiers.meta;
 
+import ai.djl.Device;
+import ai.djl.Model;
+import ai.djl.engine.Engine;
+import ai.djl.ndarray.NDList;
+import ai.djl.ndarray.NDManager;
+import ai.djl.training.loss.Loss;
 import com.yahoo.labs.samoa.instances.Instance;
 
 import moa.capabilities.CapabilitiesHandler;
@@ -25,10 +31,8 @@ import moa.capabilities.Capability;
 import moa.capabilities.ImmutableCapabilities;
 import moa.classifiers.AbstractClassifier;
 import moa.classifiers.MultiClassClassifier;
-import moa.core.DoubleVector;
-import moa.core.InstanceExample;
-import moa.core.Measurement;
-import moa.core.MiscUtils;
+import moa.classifiers.core.driftdetection.ADWIN;
+import moa.core.*;
 import moa.options.ClassOption;
 
 import com.github.javacliparser.FloatOption;
@@ -134,6 +138,16 @@ public class AdaptiveRandomForest1 extends AbstractClassifier implements MultiCl
             "RandomSeed", 'r',
             "Random seed for random number generation.", 1);
 
+
+    public static final int VOTE_AGGREGATE_USING_USING_MIN_LOSS = 0;
+    public static final int VOTE_AGGREGATE_USING_MAJORITY_VOTE = 1;
+
+    public MultiChoiceOption voteAggregationCriteria = new MultiChoiceOption("modelSelectionCriteria", 'c',
+            "The vote aggregation criteria",
+            new String[]{"minLoss", "majorityVote"},
+            new String[]{"minLoss", "majorityVote"}, VOTE_AGGREGATE_USING_MAJORITY_VOTE);
+
+
     protected static final int FEATURES_M = 0;
     protected static final int FEATURES_SQRT = 1;
     protected static final int FEATURES_SQRT_INV = 2;
@@ -202,25 +216,39 @@ public class AdaptiveRandomForest1 extends AbstractClassifier implements MultiCl
 
     @Override
     public double[] getVotesForInstance(Instance instance) {
+        int chosenIndex = 0;
+        double minEstimation = Double.MAX_VALUE;
         Instance testInstance = instance.copy();
         if(this.ensemble == null) 
             initEnsemble(testInstance);
         DoubleVector combinedVote = new DoubleVector();
 
         for(int i = 0 ; i < this.ensemble.length ; ++i) {
-            DoubleVector vote = new DoubleVector(this.ensemble[i].getVotesForInstance(testInstance));
-            if (vote.sumOfValues() > 0.0) {
-                vote.normalize();
-                double acc = this.ensemble[i].evaluator.getPerformanceMeasurements()[1].getValue();
-                if(! this.disableWeightedVote.isSet() && acc > 0.0) {                        
-                    for(int v = 0 ; v < vote.numValues() ; ++v) {
-                        vote.setValue(v, vote.getValue(v) * acc);
+            if (voteAggregationCriteria.getChosenIndex() == VOTE_AGGREGATE_USING_MAJORITY_VOTE) {
+
+                DoubleVector vote = new DoubleVector(this.ensemble[i].getVotesForInstance(testInstance));
+                if (vote.sumOfValues() > 0.0) {
+                    vote.normalize();
+                    double acc = this.ensemble[i].evaluator.getPerformanceMeasurements()[1].getValue();
+                    if (!this.disableWeightedVote.isSet() && acc > 0.0) {
+                        for (int v = 0; v < vote.numValues(); ++v) {
+                            vote.setValue(v, vote.getValue(v) * acc);
+                        }
                     }
+                    combinedVote.addValues(vote);
                 }
-                combinedVote.addValues(vote);
+            }else{
+                if (this.ensemble[i].getLossEstimation() < minEstimation){
+                    minEstimation = this.ensemble[i].getLossEstimation();
+                    chosenIndex = i;
+                }
             }
         }
-        return combinedVote.getArrayRef();
+        if (voteAggregationCriteria.getChosenIndex() == VOTE_AGGREGATE_USING_MAJORITY_VOTE) {
+            return combinedVote.getArrayRef();
+        }else{
+            return this.ensemble[chosenIndex].getVotesForInstance(testInstance);
+        }
     }
 
     @Override
@@ -340,6 +368,10 @@ public class AdaptiveRandomForest1 extends AbstractClassifier implements MultiCl
         protected int numberOfDriftsDetected;
         protected int numberOfWarningsDetected;
 
+        protected ADWIN lossEstimator;
+        protected Model nnmodel = null;
+        private transient NDManager trainingNDManager;
+
         private void init(int indexOriginal, ARFHoeffdingTree instantiatedClassifier, BasicClassificationPerformanceEvaluator evaluatorInstantiated, 
             long instancesSeen, boolean useBkgLearner, boolean useDriftDetector, ClassOption driftOption, ClassOption warningOption, boolean isBackgroundLearner) {
             this.indexOriginal = indexOriginal;
@@ -441,8 +473,55 @@ public class AdaptiveRandomForest1 extends AbstractClassifier implements MultiCl
             }
         }
 
+        public void initLossEstimator(){
+            nnmodel = Model.newInstance("ARF", Device.cpu());
+            trainingNDManager = Engine.getInstance().newBaseManager(nnmodel.getNDManager().getDevice());
+            lossEstimator = new ADWIN(1.0E-5);
+        }
+
+        private void setEstimatedLoss(Instance instance, double [] votes){
+            double loss = 0.0;
+            if (lossEstimator == null){
+                initLossEstimator();
+            }
+            try{
+                NDManager childNDManager = trainingNDManager.newSubManager();
+                double [] classValue =  new double []{ instance.classValue() };
+                NDList l = new NDList(childNDManager.create(classValue));
+                NDList preds;
+                if (votes.length < instance.dataset().numClasses()) {
+                    double [] v = new double[instance.dataset().numClasses()];
+                    v[Utils.maxIndex(votes)] = votes[Utils.maxIndex(votes)];
+                    preds = new NDList(childNDManager.create(v));
+                }else {
+                    preds = new NDList(childNDManager.create(votes));
+                }
+
+                Loss lossF = Loss.softmaxCrossEntropyLoss();
+                loss = lossF.evaluate(l, preds).toDoubleArray()[0];
+
+                preds.close();
+                l.close();
+            }catch (Exception e) {
+                System.err.println(e);
+                e.printStackTrace();
+                System.exit(1);
+            }
+            lossEstimator.setInput(loss);
+        }
+
+
+        public double getLossEstimation(){
+            if (lossEstimator != null){
+                return lossEstimator.getEstimation();
+            }else{
+                return 0.0;
+            }
+        }
+
         public double[] getVotesForInstance(Instance instance) {
             DoubleVector vote = new DoubleVector(this.classifier.getVotesForInstance(instance));
+            setEstimatedLoss(instance, vote.getArrayRef());
             return vote.getArrayRef();
         }
 

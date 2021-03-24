@@ -18,6 +18,18 @@
  */
 package moa.classifiers.meta;
 
+import ai.djl.Device;
+import ai.djl.Model;
+import ai.djl.basicmodelzoo.basic.Mlp;
+import ai.djl.engine.Engine;
+import ai.djl.ndarray.NDArray;
+import ai.djl.ndarray.NDList;
+import ai.djl.ndarray.NDManager;
+import ai.djl.ndarray.types.Shape;
+import ai.djl.nn.Block;
+import ai.djl.training.DefaultTrainingConfig;
+import ai.djl.training.Trainer;
+import ai.djl.training.loss.Loss;
 import com.github.javacliparser.FlagOption;
 import com.github.javacliparser.FloatOption;
 import com.github.javacliparser.IntOption;
@@ -32,6 +44,7 @@ import moa.capabilities.ImmutableCapabilities;
 import moa.classifiers.AbstractClassifier;
 import moa.classifiers.Classifier;
 import moa.classifiers.MultiClassClassifier;
+import moa.classifiers.core.driftdetection.ADWIN;
 import moa.classifiers.core.driftdetection.ChangeDetector;
 import moa.core.*;
 import moa.evaluation.BasicClassificationPerformanceEvaluator;
@@ -122,6 +135,14 @@ public class StreamingRandomPatches1 extends AbstractClassifier implements Multi
             "RandomSeed", 'r',
             "Random seed for random number generation.", 1);
 
+    public static final int VOTE_AGGREGATE_USING_USING_MIN_LOSS = 0;
+    public static final int VOTE_AGGREGATE_USING_MAJORITY_VOTE = 1;
+
+    public MultiChoiceOption voteAggregationCriteria = new MultiChoiceOption("modelSelectionCriteria", 'c',
+            "The vote aggregation criteria",
+            new String[]{"minLoss", "majorityVote"},
+            new String[]{"minLoss", "majorityVote"}, VOTE_AGGREGATE_USING_MAJORITY_VOTE);
+
     public static final int TRAIN_RANDOM_SUBSPACES = 0;
     public static final int TRAIN_RESAMPLING = 1;
     public static final int TRAIN_RANDOM_PATCHES = 2;
@@ -172,24 +193,38 @@ public class StreamingRandomPatches1 extends AbstractClassifier implements Multi
         //Instance testInstance = instance.copy();
         //testInstance.setMissing(instance.classAttribute());
         //testInstance.setClassValue(0.0);
+        int chosenIndex = 0;
+        double minEstimation = Double.MAX_VALUE;
         if(this.ensemble == null)
             initEnsemble(instance);
         DoubleVector combinedVote = new DoubleVector();
 
         for(int i = 0 ; i < this.ensemble.length ; ++i) {
-            DoubleVector vote = new DoubleVector(this.ensemble[i].getVotesForInstance(instance));
-            if (vote.sumOfValues() > 0.0) {
-                vote.normalize();
-                double acc = this.ensemble[i].evaluator.getPerformanceMeasurements()[1].getValue();
-                if(!this.disableWeightedVote.isSet() && acc > 0.0) {
-                    for(int v = 0 ; v < vote.numValues() ; ++v) {
-                        vote.setValue(v, vote.getValue(v) * acc);
+            if (voteAggregationCriteria.getChosenIndex() == VOTE_AGGREGATE_USING_MAJORITY_VOTE){
+                DoubleVector vote = new DoubleVector(this.ensemble[i].getVotesForInstance(instance));
+                if (vote.sumOfValues() > 0.0) {
+                    vote.normalize();
+                    double acc = this.ensemble[i].evaluator.getPerformanceMeasurements()[1].getValue();
+                    if(!this.disableWeightedVote.isSet() && acc > 0.0) {
+                        for(int v = 0 ; v < vote.numValues() ; ++v) {
+                            vote.setValue(v, vote.getValue(v) * acc);
+                        }
                     }
+                    combinedVote.addValues(vote);
                 }
-                combinedVote.addValues(vote);
+            }else{
+                if (this.ensemble[i].getLossEstimation() < minEstimation){
+                    minEstimation = this.ensemble[i].getLossEstimation();
+                    chosenIndex = i;
+                }
             }
         }
-        return combinedVote.getArrayRef();
+
+        if (voteAggregationCriteria.getChosenIndex() == VOTE_AGGREGATE_USING_MAJORITY_VOTE) {
+            return combinedVote.getArrayRef();
+        }else{
+            return this.ensemble[chosenIndex].getVotesForInstance(instance);
+        }
     }
 
     @Override
@@ -310,7 +345,6 @@ public class StreamingRandomPatches1 extends AbstractClassifier implements Multi
                     break;
             }
         }
-
     }
 
     @Override
@@ -390,6 +424,10 @@ public class StreamingRandomPatches1 extends AbstractClassifier implements Multi
         // induced drifts/warnings
         public int numberOfDriftsInduced;
         public int numberOfWarningsInduced;
+
+        protected ADWIN lossEstimator;
+        protected Model nnmodel = null;
+        private transient NDManager trainingNDManager;
 
         private void init(int indexOriginal, Classifier instantiatedClassifier,
                           BasicClassificationPerformanceEvaluator evaluatorInstantiated,
@@ -593,6 +631,53 @@ public class StreamingRandomPatches1 extends AbstractClassifier implements Multi
             this.warningDetectionMethod = ((ChangeDetector) getPreparedClassOption(this.warningOption)).copy();
         }
 
+
+        public void initLossEstimator(){
+            nnmodel = Model.newInstance("ARF", Device.cpu());
+            trainingNDManager = Engine.getInstance().newBaseManager(nnmodel.getNDManager().getDevice());
+            lossEstimator = new ADWIN(1.0E-5);
+        }
+
+        private void setEstimatedLoss(Instance instance, double [] votes){
+            double loss = 0.0;
+            if (lossEstimator == null){
+                initLossEstimator();
+            }
+            try{
+                NDManager childNDManager = trainingNDManager.newSubManager();
+                double [] classValue =  new double []{ instance.classValue() };
+                NDList l = new NDList(childNDManager.create(classValue));
+                NDList preds;
+                if (votes.length < instance.dataset().numClasses()) {
+                    double [] v = new double[instance.dataset().numClasses()];
+                    v[Utils.maxIndex(votes)] = votes[Utils.maxIndex(votes)];
+                    preds = new NDList(childNDManager.create(v));
+                }else {
+                    preds = new NDList(childNDManager.create(votes));
+                }
+
+                Loss lossF = Loss.softmaxCrossEntropyLoss();
+                loss = lossF.evaluate(l, preds).toDoubleArray()[0];
+
+                preds.close();
+                l.close();
+            }catch (Exception e) {
+                System.err.println(e);
+                e.printStackTrace();
+                System.exit(1);
+            }
+            lossEstimator.setInput(loss);
+        }
+
+
+        public double getLossEstimation(){
+            if (lossEstimator != null){
+                return lossEstimator.getEstimation();
+            }else{
+                return 0.0;
+            }
+        }
+
         /**
          * @param instance
          * @return votes for the given instance
@@ -602,10 +687,11 @@ public class StreamingRandomPatches1 extends AbstractClassifier implements Multi
                 prepareRandomSubspaceInstance(instance, 1);
                 // subset.get(0) returns the instance transformed to the correct subspace (i.e. current model subspace).
                 DoubleVector vote = new DoubleVector(this.classifier.getVotesForInstance(this.subset.get(0)));
-
+                setEstimatedLoss(instance, vote.getArrayRef());
                 return vote.getArrayRef();
             }
             DoubleVector vote = new DoubleVector(this.classifier.getVotesForInstance(instance));
+            setEstimatedLoss(instance, vote.getArrayRef());
             return vote.getArrayRef();
         }
     }
