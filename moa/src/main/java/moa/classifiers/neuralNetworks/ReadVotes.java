@@ -28,6 +28,7 @@ import moa.classifiers.AbstractClassifier;
 import moa.classifiers.MultiClassClassifier;
 import moa.core.InstanceExample;
 import moa.core.Measurement;
+import moa.core.Utils;
 import moa.evaluation.BasicClassificationPerformanceEvaluator;
 
 import java.io.BufferedReader;
@@ -241,14 +242,13 @@ public class ReadVotes extends AbstractClassifier implements MultiClassClassifie
 		}
 
 		double minEstimation = Double.MAX_VALUE;
-		double maxPobaForClassIndex = Double.MIN_VALUE;
 		for (int i = 0 ; i < votesForID.size() ; i++) {
 			if (votesForID.get(i).estimatedLoss < minEstimation){
 				minEstimation = votesForID.get(i).estimatedLoss;
 				chosenIndexByMinLoss = i;
 			}
 
-			if (maxPobaForClassIndex < votesForID.get(i).votes[(int)inst.classValue()]){
+			if (Utils.maxIndex(votesForID.get(i).votes) == (int) inst.classValue()){
 				chosenIndexIfClassLabelKnownAhead = i;
 			}
 		}
@@ -300,13 +300,15 @@ public class ReadVotes extends AbstractClassifier implements MultiClassClassifie
 		}
 
 
-		System.out.println("MinEstimatedLoss," +
+		System.out.println("id," +
+				"MinEstimatedLoss," +
 				"MajorityVote," +
 				"BestMLP," +
 				"BestMLPAcc," +
 				"IfClassLabelKnownAhead");
 
-		System.out.println(performanceByMinLoss.getPerformanceMeasurements()[1].getValue() + "," +
+		System.out.println(instanceID + "," +
+				performanceByMinLoss.getPerformanceMeasurements()[1].getValue() + "," +
 				performanceByMajorityVote.getPerformanceMeasurements()[1].getValue() + "," +
 				bestMLP + "," +
 				ensemble.get(bestMLP).evaluator.getPerformanceMeasurements()[1].getValue() + "," +

@@ -16,6 +16,7 @@ echo "Script pid = $SCRIPT_PID"
 dataset=(RBF_f RBF_m LED_g LED_a AGR_a AGR_g spam_corpus kdd99 airlines WISDM_ar_v1.1_transformed elecNormNew nomao covtypeNorm)
 #dataset=(RBF_f RBF_m LED_g LED_a AGR_a AGR_g spam_corpus kdd99 airlines WISDM_ar_v1.1_transformed elecNormNew nomao covtypeNorm real-sim.libsvm.class_Nominal_sparse SVHN.scale.t.libsvm.sparse_class_Nominal sector.scale.libsvm.class_Nominal_sparse gisette_scale_class_Nominal epsilon_normalized.t_class_Nominal rcv1_train.binary_class_Nominal)
 dataset=(RBF_f RBF_m LED_g LED_a AGR_a AGR_g spam_corpus kdd99 airlines WISDM_ar_v1.1_transformed elecNormNew nomao covtypeNorm real-sim.libsvm.class_Nominal_sparse SVHN.scale.t.libsvm.sparse_class_Nominal sector.scale.libsvm.class_Nominal_sparse gisette_scale_class_Nominal epsilon_normalized.t_class_Nominal)
+dataset=(LED_a)
 
 datasets_to_repeat=(WISDM_ar_v1.1_transformed elecNormNew nomao)
 max_repeat=0
@@ -30,6 +31,7 @@ learners=('neuralNetworks.MultiMLP -h -n -t UseThreads -o 8 -O 8 -N 9 -R' 'neura
 learners=('meta.AdaptiveRandomForest1 -s 10 -j 10' 'meta.StreamingRandomPatches1 -s 10' 'neuralNetworks.MultiMLP -h -n -t UseThreads -o 8 -O 8 -N 9 -b 0.0' 'neuralNetworks.MultiMLP -h -n -t UseThreads -o 8 -O 8 -N 9 -b 0.6')
 learners=('neuralNetworks.MultiMLP -h -n -t UseThreads -o 10 -O 10 -b 0.0 -R' 'neuralNetworks.MultiMLP -h -n -t UseThreads -o 10 -O 10 -b 0.6 -R' 'meta.AdaptiveRandomForest1 -s 10 -j 10' 'meta.StreamingRandomPatches1 -s 10')
 learners=('neuralNetworks.MultiMLP -h -n -t UseThreads -o 10 -O 10 -b 0.0 -R -P P10' 'neuralNetworks.MultiMLP -h -n -t UseThreads -o 10 -O 10 -b 0.6 -R -P P10' 'meta.AdaptiveRandomForest1 -s 10 -j 10 -m 10' 'meta.StreamingRandomPatches1 -s 10 -m 10')
+learners=('neuralNetworks.ReadVotes')
 
 sample_frequency=1000000
 use_10_percent_sample_frequency=0
@@ -79,6 +81,14 @@ if [ $# -gt 4 ]; then
   conda activate "$5"
   conda env list
 fi
+
+VOTES_DIR=''
+if [ $# -gt 5 ]; then
+  if [ -d "$6" ]; then
+    VOTES_DIR="$6"
+  fi
+fi
+echo "Votes dir: $VOTES_DIR"
 
 BASEDIR=`dirname $0`/..
 BASEDIR=`(cd "$BASEDIR"; pwd)`
@@ -133,7 +143,7 @@ do
     task_failed=0
     echo "======================================================================================="
     echo "Dataset = ${dataset[$i]}"
-
+    votes_file=''
     learner_prefix="${learner// /}"
 
     in_file="${dataset_dir}/${dataset[$i]}.arff"
@@ -151,15 +161,21 @@ do
       warmup_instances=1000
     fi
 
-    if [[ "$learner" =~  "MultiMLP" ]]; then
-      learner_command="$learner -s $warmup_instances"
-    else
-      if [[ "$learner" =~  "AdaptiveRandomForest1" ]] || [[ "$learner" =~  "StreamingRandomPatches1" ]]; then
+    case $learner in
+    neuralNetworks.MultiMLP*)
+        learner_command="$learner -s $warmup_instances"
+        ;;
+    neuralNetworks.ReadVotes*)
+        votes_file="$(find $VOTES_DIR -name *${dataset[$i]}_NN_votes.csv)"
+        learner_command="$learner -f $votes_file"
+        ;;
+    meta.AdaptiveRandomForest1*|meta.StreamingRandomPatches1*)
         learner_command="$learner -r $random_seed"
-      else
+        ;;
+    *)
         learner_command="$learner"
-      fi
-    fi
+        ;;
+    esac
 
     if [ -f $out_file ]; then
       echo "$out_file already available"
