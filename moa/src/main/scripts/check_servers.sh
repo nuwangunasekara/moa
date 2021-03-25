@@ -59,7 +59,7 @@ if [ $# -gt 0 ]; then
 fi
 
 echo -e "\nServers with more than 1 GPU with NVLink, all with 64BB CPU RAM:\n"
-for i in duet quartet quatern;
+for i in duet quartet quatern deuce;
 do
   print_server_info "${i}.${domain_name}" $show_gpu
 done
