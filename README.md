@@ -22,12 +22,35 @@ MOA performs BIG DATA stream mining in real time, and large scale machine learni
 
 ## Mailing lists
 * MOA users: http://groups.google.com/group/moa-users
-* MOA developers: http://groups.google.com/group/moa-development
+* MOA developers: http://groups.google.com/group/moa-development 
 
 ## Citing MOA
 If you want to refer to MOA in a publication, please cite the following JMLR paper: 
 
 > Albert Bifet, Geoff Holmes, Richard Kirkby, Bernhard Pfahringer (2010);
-> MOA: Massive Online Analysis; Journal of Machine Learning Research 11: 1601-1604 
+> MOA: Massive Online Analysis; Journal of Machine Learning Research 11: 1601-1604
+
+
+# Run MOA experiments with [DJL](https://djl.ai)
+## Requirements
+* [Conda](https://docs.conda.io/projects/conda/en/latest/user-guide/install/index.html)
+## How to set up environment
+From source root run:
+> bash ./moa/src/main/scripts/reinit_conda.sh <directory for conda environment> moa/src/main/scripts/conda.yml
+
+e.g
+> bash ./moa/src/main/scripts/reinit_conda.sh ~/Desktop/conda/ moa/src/main/scripts/conda.yml
+## How to build MOA for
+From source root run:
+> bash ./moa/src/main/scripts/build_moa.sh < directory for separate maven repository > < directory for conda environment >
+
+e.g
+> bash ./moa/src/main/scripts/build_moa.sh ~/Desktop/conda/m2/ ~/Desktop/conda/
+## Run experiments
+From < results dir > run:
+> bash < moa source root >/moa/src/main/scripts/run_moa.sh < dataset dir > < results dir > < DJL cache dir > < directory for separate maven repository > < directory for conda environment >
+
+e.g
+> bash ~/Desktop/moa_fork/moa/src/main/scripts/run_moa.sh ~/Desktop/datasets/ ~/Desktop/results/Exp1/ ~/Desktop/djl.ai/ ~/Desktop/m2/ ~/Desktop/conda/
 
 
