@@ -34,6 +34,10 @@ If you want to refer to MOA in a publication, please cite the following JMLR pap
 # Run MOA experiments with [DJL](https://djl.ai)
 ## Requirements
 * [Conda](https://docs.conda.io/projects/conda/en/latest/user-guide/install/index.html)
+## Datasets
+Datasets could be downloaded from:
+[https://www.dropbox.com/s/y2d9v0kayorm23b/datasets.tar.gz?dl=0](https://www.dropbox.com/s/y2d9v0kayorm23b/datasets.tar.gz?dl=0)
+
 ## How to set up environment
 From source root run:
 > bash ./moa/src/main/scripts/reinit_conda.sh <directory for conda environment> moa/src/main/scripts/conda.yml
