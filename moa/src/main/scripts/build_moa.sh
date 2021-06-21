@@ -9,7 +9,6 @@ if [ $# -lt 1 ]; then
   print_usage
   exit 1
 else
-#  mavan_local_repo="~/.m2/repository/"
   mavan_local_repo="$1"
 fi
 
@@ -48,3 +47,8 @@ echo "maven info: ========================================"
 mvn -v
 echo "Building moa:======================================="
 mvn clean install -DskipTests=true -Dmaven.javadoc.skip=true -Dlatex.skipBuild=true
+echo""
+echo "To run MOA GUI with NN support, execute command:======================================="
+echo "bash moa/src/main/scripts/moa_gui_with_NN_support.sh <mavan_repo> <conda_env> <djl_cache_dir>"
+echo "bash moa/src/main/scripts/moa_gui_with_NN_support.sh $mavan_local_repo $2 ~/Desktop/djl.ai"
+
