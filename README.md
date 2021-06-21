@@ -39,19 +39,15 @@ Datasets could be downloaded from:
 [https://www.dropbox.com/s/y2d9v0kayorm23b/datasets.tar.gz?dl=0](https://www.dropbox.com/s/y2d9v0kayorm23b/datasets.tar.gz?dl=0)
 
 ## How to set up environment
-From source root run:
-> bash ./moa/src/main/scripts/reinit_conda.sh <directory for conda environment> moa/src/main/scripts/conda.yml
-
-e.g
+###From source root run:
 > bash ./moa/src/main/scripts/reinit_conda.sh ~/Desktop/conda/ moa/src/main/scripts/conda.yml
 ## How to build MOA for
-From source root run:
-> bash ./moa/src/main/scripts/build_moa.sh < directory for separate maven repository > < directory for conda environment >
-
-e.g
-> bash ./moa/src/main/scripts/build_moa.sh ~/Desktop/conda/m2/ ~/Desktop/conda/
+###From source root run:
+> bash ./moa/src/main/scripts/build_moa.sh ~/Desktop/m2/ ~/Desktop/conda/
+## Run GUI
+> bash ./moa/src/main/scripts/build_moa.sh ~/Desktop/m2/ ~/Desktop/conda/  ~/Desktop/djl.ai
 ## Run experiments
-From < results dir > run:
+###From < results dir > run:
 > bash < moa source root >/moa/src/main/scripts/run_moa.sh < dataset dir > < results dir > < DJL cache dir > < directory for separate maven repository > < directory for conda environment >
 
 e.g
