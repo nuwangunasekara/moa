@@ -16,7 +16,7 @@ echo "Script pid = $SCRIPT_PID"
 dataset=(RBF_f RBF_m LED_g LED_a AGR_a AGR_g spam_corpus kdd99 airlines WISDM_ar_v1.1_transformed elecNormNew nomao covtypeNorm)
 #dataset=(RBF_f RBF_m LED_g LED_a AGR_a AGR_g spam_corpus kdd99 airlines WISDM_ar_v1.1_transformed elecNormNew nomao covtypeNorm real-sim.libsvm.class_Nominal_sparse SVHN.scale.t.libsvm.sparse_class_Nominal sector.scale.libsvm.class_Nominal_sparse gisette_scale_class_Nominal epsilon_normalized.t_class_Nominal rcv1_train.binary_class_Nominal)
 dataset=(RBF_f RBF_m LED_g LED_a AGR_a AGR_g spam_corpus kdd99 airlines WISDM_ar_v1.1_transformed elecNormNew nomao covtypeNorm real-sim.libsvm.class_Nominal_sparse SVHN.scale.t.libsvm.sparse_class_Nominal sector.scale.libsvm.class_Nominal_sparse gisette_scale_class_Nominal epsilon_normalized.t_class_Nominal)
-dataset=(elecNormNew)
+dataset=(elecNormNew airlines covtypeNorm RBF_f RBF_m LED_g LED_a AGR_a AGR_g)
 
 datasets_to_repeat=(WISDM_ar_v1.1_transformed elecNormNew nomao)
 max_repeat=0
@@ -33,7 +33,7 @@ learners=('neuralNetworks.MultiMLP -h -n -t UseThreads -o 10 -O 10 -b 0.0 -R' 'n
 learners=('neuralNetworks.MultiMLP -h -n -t UseThreads -o 10 -O 10 -b 0.0 -R -P P10' 'neuralNetworks.MultiMLP -h -n -t UseThreads -o 10 -O 10 -b 0.6 -R -P P10' 'meta.AdaptiveRandomForest1 -s 10 -j 10 -m 10' 'meta.StreamingRandomPatches1 -s 10 -m 10')
 learners=('neuralNetworks.ReadVotes')
 learners=('meta.AdaptiveRandomForest1 -s 10 -j 10 -m 60 -c minLoss' 'meta.StreamingRandomPatches1 -s 10 -m 60 -c minLoss' 'meta.AdaptiveRandomForest1 -s 30 -j 30 -m 10 -c minLoss' 'meta.StreamingRandomPatches1 -s 30 -m 10 -c minLoss')
-
+learners=('neuralNetworks.MLP -r 0.00005 -o ADAM -h -n -N 9 -B 1' 'neuralNetworks.MLP -r 0.00005 -o ADAM -h -n -N 9 -B 4' 'neuralNetworks.MLP -r 0.00005 -o ADAM -h -n -N 9 -B 50' 'neuralNetworks.MLP -r 0.00005 -o ADAM -h -n -N 9 -B 500' 'neuralNetworks.MLP -r 0.00005 -o ADAM -h -n -N 9 -B 2000')
 
 sample_frequency=1000000
 use_10_percent_sample_frequency=0
