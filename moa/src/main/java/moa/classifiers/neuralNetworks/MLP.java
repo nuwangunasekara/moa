@@ -115,6 +115,12 @@ public class MLP extends AbstractClassifier implements MultiClassClassifier {
 			"Number of layers",
 			1, 1, 4);
 
+	public IntOption miniBatchSize = new IntOption(
+			"miniBatchSize",
+			'B',
+			"Mini Batch Size",
+			1, 1, 2048);
+
 	public static final int deviceTypeOptionGPU = 0;
 	public static final int deviceTypeOptionCPU = 1;
 	public MultiChoiceOption deviceTypeOption = new MultiChoiceOption("deviceType", 'd',
@@ -151,7 +157,11 @@ public class MLP extends AbstractClassifier implements MultiClassClassifier {
 	protected Trainer trainer = null;
 	protected int featureValuesArraySize = 0;
 	private transient NDManager trainingNDManager;
+	private transient NDManager childTrainingNDManager = null;
+	private transient NDArray trainMiniBatchData = null;
+	private transient NDArray trainMiniBatchLabels = null;
 	private transient NDManager testingNDManager;
+	private int itemsInMiniBatch = 0;
 	private int numberOfClasses;
 	private double [] votes;
 	private boolean resetOptimiser = false;
@@ -186,61 +196,93 @@ public class MLP extends AbstractClassifier implements MultiClassClassifier {
 
 	public void trainOnFeatureValues(float[] featureValues, double [] classValue /*, InstanceExample instanceExample*/) {
 		samplesSeen ++;
-		try{
-			NDManager childNDManager = trainingNDManager.newSubManager();
-			NDList d = new NDList(childNDManager.create(featureValues));
-			NDList l = new NDList(childNDManager.create(classValue));
 
-			GradientCollector collector = trainer.newGradientCollector();
-			NDList preds = trainer.forward(d, l);
-//			for (int i = 0; i < votes.length; i++) {
-//				votes[i] = (double) preds.get(0).toFloatArray()[i];
-//			}
-//			performanceEvaluator.addResult(instanceExample, votes);
-//			accEstimator.setInput(performanceEvaluator.getPerformanceMeasurements()[1].getValue());
-			NDArray lossValue = trainer.getLoss().evaluate(l, preds);
-			accumulatedLoss += lossValue.getFloat();
-
-			double previousLossEstimation = lossEstimator.getEstimation();
-			if (lossValue.getFloat() == 0.0f){
-//				System.out.println("Zero loss");
-				this.lossEstimator.setInput(0.0);
+		if (childTrainingNDManager == null){
+			// initialize and create NDArrays
+			childTrainingNDManager = trainingNDManager.newSubManager();
+			trainMiniBatchData = childTrainingNDManager.create(featureValues);
+			trainMiniBatchLabels = childTrainingNDManager.create(classValue);
+		}else{
+			// add item to the mini batch
+			if (itemsInMiniBatch == 1){
+				trainMiniBatchData = trainMiniBatchData.stack(childTrainingNDManager.create(featureValues),0);
+				trainMiniBatchLabels = trainMiniBatchLabels.stack(childTrainingNDManager.create(classValue),0);
 			}else{
-				if (lossValue.getFloat() > backPropLossThreshold.getValue()){
-					trainedCount++;
-					try {
-						collector.backward(lossValue);
-						trainer.step(); // enforce the calculated weights
-					}catch (IllegalStateException e)
-					{
-//					trainer.step() throws above exception if all gradients are zero.
+				trainMiniBatchData = trainMiniBatchData.concat(childTrainingNDManager.create(featureValues, new Shape(1,featureValues.length)),0);
+				trainMiniBatchLabels = trainMiniBatchLabels.concat(childTrainingNDManager.create(classValue, new Shape(1,classValue.length)),0);
+			}
+		}
+		itemsInMiniBatch ++;
+
+		if (itemsInMiniBatch == miniBatchSize.getValue() ){
+			try{
+				// train mini batch
+				NDList d = new NDList(trainMiniBatchData);
+				NDList l = new NDList(trainMiniBatchLabels);
+
+				GradientCollector collector = trainer.newGradientCollector();
+				NDList preds = trainer.forward(d, l);
+	//			for (int i = 0; i < votes.length; i++) {
+	//				votes[i] = (double) preds.get(0).toFloatArray()[i];
+	//			}
+	//			performanceEvaluator.addResult(instanceExample, votes);
+	//			accEstimator.setInput(performanceEvaluator.getPerformanceMeasurements()[1].getValue());
+				NDArray lossValue = trainer.getLoss().evaluate(l, preds);
+				accumulatedLoss += lossValue.getFloat();
+
+				double previousLossEstimation = lossEstimator.getEstimation();
+				if (lossValue.getFloat() == 0.0f){
+	//				System.out.println("Zero loss");
+					this.lossEstimator.setInput(0.0);
+				}else{
+					if (lossValue.getFloat() > backPropLossThreshold.getValue()){
+						trainedCount++;
+						try {
+							collector.backward(lossValue);
+							trainer.step(); // enforce the calculated weights
+						}catch (IllegalStateException e)
+						{
+		//					trainer.step() throws above exception if all gradients are zero.
+						}
 					}
+					this.lossEstimator.setInput(lossValue.getFloat());
 				}
-				this.lossEstimator.setInput(lossValue.getFloat());
-			}
-			//			print weights
-//			System.out.println(nnmodel.getBlock().getChildren().get("02Linear").getParameters().get("weight").getArray());
+				//			print weights
+	//			System.out.println(nnmodel.getBlock().getChildren().get("02Linear").getParameters().get("weight").getArray());
 
-			if (resetOptimiser && lossEstimator.getChange() && (previousLossEstimation < lossEstimator.getEstimation()) ){
-//				System.out.println("Resetting optimizer:" + optimizerTypeOption.getChosenLabel() + " learning rate: " + decimalFormat.format(learningRateOption.getValue()));
-				optimizerResetCount++;
-				if (resetModel.isSet()) {
-					setModel();
-					modelResetCount ++;
+				if (resetOptimiser && lossEstimator.getChange() && (previousLossEstimation < lossEstimator.getEstimation()) ){
+	//				System.out.println("Resetting optimizer:" + optimizerTypeOption.getChosenLabel() + " learning rate: " + decimalFormat.format(learningRateOption.getValue()));
+					optimizerResetCount++;
+					if (resetModel.isSet()) {
+						setModel();
+						modelResetCount ++;
+					}
+					setTrainer();
 				}
-				setTrainer();
-			}
 
-			collector.close();
-			preds.close();
-			lossValue.close();
-			d.close();
-			l.close();
-			childNDManager.close();
-		}catch (Exception e) {
-			System.err.println(e);
-			e.printStackTrace();
-			System.exit(1);
+				collector.close();
+				preds.close();
+				lossValue.close();
+				d.close();
+				l.close();
+				if (trainMiniBatchData != null){
+					trainMiniBatchData.close();
+					trainMiniBatchData = null;
+				}
+				if (trainMiniBatchLabels != null){
+					trainMiniBatchLabels.close();
+					trainMiniBatchLabels = null;
+				}
+				if (childTrainingNDManager != null) {
+					childTrainingNDManager.close();
+					childTrainingNDManager = null;
+				}
+				itemsInMiniBatch = 0;
+			}catch (Exception e) {
+				System.err.println(e);
+				e.printStackTrace();
+				System.exit(1);
+			}
 		}
 	}
 
@@ -483,7 +525,7 @@ public class MLP extends AbstractClassifier implements MultiClassClassifier {
 //				.addTrainingListeners(TrainingListener.Defaults.logging());
 		config.optOptimizer(optimizer);
 		trainer = nnmodel.newTrainer(config);
-		trainer.initialize(new Shape(1, featureValuesArraySize));
+		trainer.initialize(new Shape(miniBatchSize.getValue(), featureValuesArraySize));
 		}catch (Exception e) {
 			System.err.println(e);
 			e.printStackTrace();
